@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { X, Download, Upload, CheckCircle, AlertCircle, Loader2 } from 'lucide-react'
+import { X, Download, Upload, CheckCircle, AlertCircle, Loader2, Music2 } from 'lucide-react'
 import { exportData, importData, type ImportResult } from '../utils/exportImport'
 import { useSongStore } from '../store/songStore'
 import { useSetlistStore } from '../store/setlistStore'
@@ -10,12 +10,21 @@ interface DataModalProps {
 
 type Status = 'idle' | 'importing' | 'done' | 'error'
 
+async function importFromUrl(url: string): Promise<ImportResult> {
+  const res = await fetch(url)
+  if (!res.ok) throw new Error(`Could not fetch file (${res.status})`)
+  const blob = await res.blob()
+  const file = new File([blob], 'pino-import.json', { type: 'application/json' })
+  return importData(file)
+}
+
 export function DataModal({ onClose }: DataModalProps) {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [status, setStatus] = useState<Status>('idle')
   const [result, setResult] = useState<ImportResult | null>(null)
   const [errorMsg, setErrorMsg] = useState('')
   const [exporting, setExporting] = useState(false)
+  const [bundleImporting, setBundleImporting] = useState(false)
 
   const hydrateSongs = useSongStore((s) => s.hydrate)
   const hydrateSetlists = useSetlistStore((s) => s.hydrate)
@@ -29,28 +38,35 @@ export function DataModal({ onClose }: DataModalProps) {
     }
   }
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-
+  const runImport = async (promise: Promise<ImportResult>) => {
     setStatus('importing')
     setResult(null)
     setErrorMsg('')
-
     try {
-      const res = await importData(file)
+      const res = await promise
       setResult(res)
       setStatus('done')
-      // Re-hydrate stores so UI reflects imported data immediately
       await hydrateSongs()
       await hydrateSetlists()
     } catch (err) {
       setErrorMsg(err instanceof Error ? err.message : 'Unknown error')
       setStatus('error')
-    } finally {
-      // Reset input so same file can be re-imported if needed
-      if (fileInputRef.current) fileInputRef.current.value = ''
     }
+  }
+
+  const handleBundledImport = async () => {
+    setBundleImporting(true)
+    // Resolves correctly both on localhost and on GitHub Pages /pino-live/
+    const url = new URL('pino-import.json', window.location.href).href
+    await runImport(importFromUrl(url))
+    setBundleImporting(false)
+  }
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    await runImport(importData(file))
+    if (fileInputRef.current) fileInputRef.current.value = ''
   }
 
   return (
@@ -70,6 +86,26 @@ export function DataModal({ onClose }: DataModalProps) {
 
         <div className="px-5 py-5 space-y-4">
 
+          {/* Load bundled repertoire — prominent, first */}
+          <div className="p-4 bg-violet-900/30 border border-violet-700/50 rounded-xl space-y-2">
+            <h3 className="font-medium text-slate-200">Load Pino Repertoire</h3>
+            <p className="text-sm text-slate-400">
+              One-click load of all 257 songs and 30 setlists from the bundled repertoire file.
+              Safe to run multiple times — existing songs are updated, not duplicated.
+            </p>
+            <button
+              onClick={handleBundledImport}
+              disabled={status === 'importing' || bundleImporting}
+              className="flex items-center gap-2 px-4 py-2.5 bg-violet-600 hover:bg-violet-500
+                         disabled:opacity-50 text-white rounded-lg text-sm font-medium transition-colors"
+            >
+              {bundleImporting
+                ? <Loader2 size={16} className="animate-spin" />
+                : <Music2 size={16} />}
+              {bundleImporting ? 'Loading…' : 'Load Repertoire'}
+            </button>
+          </div>
+
           {/* Export */}
           <div className="p-4 bg-slate-700/40 border border-slate-700 rounded-xl space-y-2">
             <h3 className="font-medium text-slate-200">Export Backup</h3>
@@ -82,30 +118,27 @@ export function DataModal({ onClose }: DataModalProps) {
               className="flex items-center gap-2 px-4 py-2.5 bg-slate-600 hover:bg-slate-500
                          disabled:opacity-50 text-white rounded-lg text-sm font-medium transition-colors"
             >
-              {exporting
-                ? <Loader2 size={16} className="animate-spin" />
-                : <Download size={16} />}
+              {exporting ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
               {exporting ? 'Preparing…' : 'Download Backup'}
             </button>
           </div>
 
-          {/* Import */}
+          {/* Import from file */}
           <div className="p-4 bg-slate-700/40 border border-slate-700 rounded-xl space-y-2">
-            <h3 className="font-medium text-slate-200">Import</h3>
+            <h3 className="font-medium text-slate-200">Import from File</h3>
             <p className="text-sm text-slate-400">
-              Load songs and setlists from a backup JSON file. Existing songs with the same
-              ID will be updated; new ones will be added.
+              Restore from a previously exported backup JSON file.
             </p>
             <button
               onClick={() => fileInputRef.current?.click()}
               disabled={status === 'importing'}
-              className="flex items-center gap-2 px-4 py-2.5 bg-violet-600 hover:bg-violet-500
+              className="flex items-center gap-2 px-4 py-2.5 bg-slate-600 hover:bg-slate-500
                          disabled:opacity-50 text-white rounded-lg text-sm font-medium transition-colors"
             >
-              {status === 'importing'
+              {status === 'importing' && !bundleImporting
                 ? <Loader2 size={16} className="animate-spin" />
                 : <Upload size={16} />}
-              {status === 'importing' ? 'Importing…' : 'Choose File'}
+              {status === 'importing' && !bundleImporting ? 'Importing…' : 'Choose File'}
             </button>
             <input
               ref={fileInputRef}
@@ -116,21 +149,17 @@ export function DataModal({ onClose }: DataModalProps) {
             />
           </div>
 
-          {/* Import result */}
+          {/* Result */}
           {status === 'done' && result && (
             <div className="flex gap-3 p-4 bg-green-900/30 border border-green-700/50 rounded-xl">
               <CheckCircle size={20} className="text-green-400 flex-shrink-0 mt-0.5" />
               <div className="text-sm text-green-200 space-y-1">
                 <p className="font-medium">Import complete!</p>
-                <p>
-                  Songs: {result.songsAdded} added, {result.songsUpdated} updated
-                </p>
-                <p>
-                  Setlists: {result.setlistsAdded} added, {result.setlistsUpdated} updated
-                </p>
+                <p>Songs: {result.songsAdded} added, {result.songsUpdated} updated</p>
+                <p>Setlists: {result.setlistsAdded} added, {result.setlistsUpdated} updated</p>
                 {result.errors.length > 0 && (
                   <p className="text-yellow-400 mt-1">
-                    {result.errors.length} item(s) skipped — check console for details.
+                    {result.errors.length} item(s) skipped.
                   </p>
                 )}
               </div>
