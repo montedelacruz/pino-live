@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
+import { HashRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { BottomNav } from './components/BottomNav'
 import { LibraryPage } from './pages/LibraryPage'
 import { SongEditorPage } from './pages/SongEditorPage'
@@ -32,7 +32,7 @@ export default function App() {
   }, [hydrateSongs, hydrateSetlists])
 
   return (
-    <BrowserRouter>
+    <HashRouter>
       <Layout>
         <Routes>
           <Route path="/" element={<LibraryPage />} />
@@ -45,6 +45,6 @@ export default function App() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Layout>
-    </BrowserRouter>
+    </HashRouter>
   )
 }
