@@ -56,8 +56,8 @@ export function DataModal({ onClose }: DataModalProps) {
 
   const handleBundledImport = async () => {
     setBundleImporting(true)
-    // Resolves correctly both on localhost and on GitHub Pages /pino-live/
-    const url = new URL('pino-import.json', window.location.href).href
+    // import.meta.env.BASE_URL is '/' on localhost and '/pino-live/' on GitHub Pages
+    const url = `${import.meta.env.BASE_URL}pino-import.json`
     await runImport(importFromUrl(url))
     setBundleImporting(false)
   }
