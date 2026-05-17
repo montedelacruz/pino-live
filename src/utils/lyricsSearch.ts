@@ -1,72 +1,34 @@
-export interface HappiTrack {
-  id_track: number
-  track: string
-  artist: string
-  id_artist: number
-  album: string
-  id_album: number
-  haslyrics: boolean
-  api_lyrics: string
-  bpm: number
-  lang: string
-  cover: string
+/** iTunes Search API result (no key required) */
+export interface ItunesTrack {
+  trackId: number
+  trackName: string
+  artistName: string
+  collectionName: string
+  artworkUrl100: string
 }
 
-export interface HappiSearchResult {
-  success: boolean
-  length: number
-  result: HappiTrack[]
+interface ItunesSearchResult {
+  resultCount: number
+  results: Array<{ wrapperType: string; kind: string } & ItunesTrack>
 }
 
-export interface HappiLyricsResult {
-  success: boolean
-  result: {
-    id_track: number
-    track: string
-    artist: string
-    album: string
-    lyrics: string
-    lang: string
-    api_lyrics: string
-    id_artist: number
-    id_album: number
-    cover: string
-    bpm: number
-  }
-}
-
-export async function searchTracks(
-  query: string,
-  apiKey: string,
-  limit = 10
-): Promise<HappiTrack[]> {
-  const url = `https://api.happi.dev/v1/music?q=${encodeURIComponent(query)}&limit=${limit}&type=track&apikey=${apiKey}`
+/** Search tracks via iTunes Search API — free, no key */
+export async function searchTracks(query: string, limit = 10): Promise<ItunesTrack[]> {
+  const url =
+    `https://itunes.apple.com/search?term=${encodeURIComponent(query)}` +
+    `&media=music&entity=song&limit=${limit}`
   const res = await fetch(url)
-  if (!res.ok) throw new Error(`Happi API error: ${res.status}`)
-  const data: HappiSearchResult = await res.json()
-  if (!data.success) throw new Error('Happi API returned success=false')
-  return data.result ?? []
+  if (!res.ok) throw new Error(`iTunes search error: ${res.status}`)
+  const data: ItunesSearchResult = await res.json()
+  return data.results.filter((r) => r.wrapperType === 'track') as ItunesTrack[]
 }
 
-export async function fetchLyrics(
-  apiLyricsUrl: string,
-  apiKey: string
-): Promise<string> {
-  const sep = apiLyricsUrl.includes('?') ? '&' : '?'
-  const url = `${apiLyricsUrl}${sep}apikey=${apiKey}`
-  const res = await fetch(url)
-  if (!res.ok) throw new Error(`Happi lyrics error: ${res.status}`)
-  const data: HappiLyricsResult = await res.json()
-  if (!data.success) throw new Error('Could not fetch lyrics')
-  return data.result.lyrics ?? ''
-}
-
-/** Fallback: fetch lyrics from lyrics.ovh (no key required) */
+/** Fetch lyrics from lyrics.ovh — free, no key */
 export async function fetchLyricsOvh(artist: string, title: string): Promise<string> {
   const url = `https://api.lyrics.ovh/v1/${encodeURIComponent(artist)}/${encodeURIComponent(title)}`
   const res = await fetch(url)
-  if (!res.ok) throw new Error(`lyrics.ovh: no lyrics found`)
+  if (!res.ok) throw new Error('No lyrics found')
   const data: { lyrics?: string; error?: string } = await res.json()
-  if (data.error || !data.lyrics) throw new Error('No lyrics found on lyrics.ovh')
+  if (data.error || !data.lyrics) throw new Error('No lyrics found')
   return data.lyrics.trim()
 }
