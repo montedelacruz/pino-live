@@ -8,6 +8,7 @@ interface SettingsState {
   fontSize: number
   fontMode: FontMode
   theme: Theme
+  happiApiKey: string
   setFontSize: (size: number) => void
   increaseFontSize: () => void
   decreaseFontSize: () => void
@@ -15,6 +16,7 @@ interface SettingsState {
   toggleFontMode: () => void
   setTheme: (theme: Theme) => void
   toggleTheme: () => void
+  setHappiApiKey: (key: string) => void
 }
 
 export const useSettingsStore = create<SettingsState>()(
@@ -23,6 +25,7 @@ export const useSettingsStore = create<SettingsState>()(
       fontSize: 20,
       fontMode: 'normal',
       theme: 'dark',
+      happiApiKey: '',
 
       setFontSize: (size) => set({ fontSize: Math.min(48, Math.max(12, size)) }),
       increaseFontSize: () => set((s) => ({ fontSize: Math.min(48, s.fontSize + 2) })),
@@ -34,6 +37,8 @@ export const useSettingsStore = create<SettingsState>()(
 
       setTheme: (theme) => set({ theme }),
       toggleTheme: () => set((s) => ({ theme: s.theme === 'dark' ? 'light' : 'dark' })),
+
+      setHappiApiKey: (key) => set({ happiApiKey: key }),
     }),
     { name: 'setlist-app-settings' }
   )

@@ -1,7 +1,8 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { Trash2, Copy } from 'lucide-react'
+import { Trash2, Copy, Search } from 'lucide-react'
 import { TopBar } from '../components/TopBar'
+import { LyricsSearchModal } from '../components/LyricsSearchModal'
 import { useSongStore } from '../store/songStore'
 import type { Song } from '../db/db'
 
@@ -37,6 +38,7 @@ export function SongEditorPage() {
   const [draft, setDraft] = useState<DraftSong>(EMPTY_DRAFT)
   const [tagsInput, setTagsInput] = useState('')
   const [saving, setSaving] = useState(false)
+  const [showLyricsSearch, setShowLyricsSearch] = useState(false)
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const createdIdRef = useRef<string | null>(null)
 
@@ -243,7 +245,20 @@ export function SongEditorPage() {
         </Field>
 
         {/* Lyrics */}
-        <Field label="Lyrics">
+        <Field
+          label="Lyrics"
+          action={
+            <button
+              type="button"
+              onClick={() => setShowLyricsSearch(true)}
+              className="flex items-center gap-1 text-xs text-violet-400 hover:text-violet-300
+                         hover:bg-slate-800 px-2 py-1 rounded-lg transition-colors"
+            >
+              <Search size={12} />
+              Search online
+            </button>
+          }
+        >
           <textarea
             value={draft.lyrics}
             onChange={(e) => setField('lyrics', e.target.value)}
@@ -252,6 +267,16 @@ export function SongEditorPage() {
             className={`${inputClass} resize-y font-mono text-sm leading-relaxed`}
           />
         </Field>
+
+        {showLyricsSearch && (
+          <LyricsSearchModal
+            initialQuery={[draft.title, draft.artist].filter(Boolean).join(' ')}
+            onSelect={(lyrics) => {
+              setField('lyrics', lyrics)
+            }}
+            onClose={() => setShowLyricsSearch(false)}
+          />
+        )}
 
         {/* Notes */}
         <Field label="Notes" hint="Private — not shown on stage">
@@ -277,17 +302,22 @@ const inputClass =
 function Field({
   label,
   hint,
+  action,
   children,
 }: {
   label: string
   hint?: string
+  action?: React.ReactNode
   children: React.ReactNode
 }) {
   return (
     <div className="space-y-1.5">
-      <div className="flex items-baseline gap-2">
-        <label className="text-sm font-medium text-slate-300">{label}</label>
-        {hint && <span className="text-xs text-slate-500">{hint}</span>}
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-baseline gap-2">
+          <label className="text-sm font-medium text-slate-300">{label}</label>
+          {hint && <span className="text-xs text-slate-500">{hint}</span>}
+        </div>
+        {action}
       </div>
       {children}
     </div>
