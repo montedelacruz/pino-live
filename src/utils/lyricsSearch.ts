@@ -60,3 +60,13 @@ export async function fetchLyrics(
   if (!data.success) throw new Error('Could not fetch lyrics')
   return data.result.lyrics ?? ''
 }
+
+/** Fallback: fetch lyrics from lyrics.ovh (no key required) */
+export async function fetchLyricsOvh(artist: string, title: string): Promise<string> {
+  const url = `https://api.lyrics.ovh/v1/${encodeURIComponent(artist)}/${encodeURIComponent(title)}`
+  const res = await fetch(url)
+  if (!res.ok) throw new Error(`lyrics.ovh: no lyrics found`)
+  const data: { lyrics?: string; error?: string } = await res.json()
+  if (data.error || !data.lyrics) throw new Error('No lyrics found on lyrics.ovh')
+  return data.lyrics.trim()
+}

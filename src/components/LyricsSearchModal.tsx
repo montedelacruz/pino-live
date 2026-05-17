@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { X, Search, ExternalLink, ChevronDown, ChevronUp, Loader2, KeyRound, Check } from 'lucide-react'
 import { useSettingsStore } from '../store/settingsStore'
-import { searchTracks, fetchLyrics } from '../utils/lyricsSearch'
+import { searchTracks, fetchLyrics, fetchLyricsOvh } from '../utils/lyricsSearch'
 import type { HappiTrack } from '../utils/lyricsSearch'
 
 interface Props {
@@ -74,8 +74,6 @@ export function LyricsSearchModal({ initialQuery = '', onSelect, onClose }: Prop
   }
 
   const handleTogglePreview = async (track: HappiTrack) => {
-    if (!track.haslyrics) return
-
     if (expandedId === track.id_track) {
       setExpandedId(null)
       return
@@ -88,7 +86,14 @@ export function LyricsSearchModal({ initialQuery = '', onSelect, onClose }: Prop
 
     setLoadingLyrics(track.id_track)
     try {
-      const lyrics = await fetchLyrics(track.api_lyrics, happiApiKey)
+      let lyrics: string
+      if (track.haslyrics) {
+        // Try Happi first
+        lyrics = await fetchLyrics(track.api_lyrics, happiApiKey)
+      } else {
+        // Happi has no lyrics — fall back to lyrics.ovh
+        lyrics = await fetchLyricsOvh(track.artist, track.track)
+      }
       setPreviewLyrics((p) => ({ ...p, [track.id_track]: lyrics }))
     } catch (err) {
       setLyricsError((p) => ({
@@ -269,7 +274,6 @@ export function LyricsSearchModal({ initialQuery = '', onSelect, onClose }: Prop
                     <button
                       className="w-full flex items-center gap-3 px-4 py-3 text-left"
                       onClick={() => handleTogglePreview(track)}
-                      disabled={!track.haslyrics}
                     >
                       {/* Cover art */}
                       {track.cover ? (
@@ -292,18 +296,17 @@ export function LyricsSearchModal({ initialQuery = '', onSelect, onClose }: Prop
 
                       {/* Badges + chevron */}
                       <div className="flex items-center gap-2 flex-shrink-0">
-                        {!track.haslyrics && (
+                        {!track.haslyrics && !isLoadingThis && !isExpanded && (
                           <span className="text-xs px-2 py-0.5 rounded-full bg-slate-700 text-slate-500">
-                            No lyrics
+                            Try anyway
                           </span>
                         )}
-                        {track.haslyrics && (
-                          isLoadingThis
-                            ? <Loader2 size={16} className="animate-spin text-violet-400" />
-                            : isExpanded
-                              ? <ChevronUp size={16} className="text-violet-400" />
-                              : <ChevronDown size={16} className="text-slate-500" />
-                        )}
+                        {isLoadingThis
+                          ? <Loader2 size={16} className="animate-spin text-violet-400" />
+                          : isExpanded
+                            ? <ChevronUp size={16} className="text-violet-400" />
+                            : <ChevronDown size={16} className="text-slate-500" />
+                        }
                       </div>
                     </button>
 
