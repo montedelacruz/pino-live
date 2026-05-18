@@ -21,11 +21,30 @@ export async function exportData(): Promise<void> {
   }
 
   const json = JSON.stringify(backup, null, 2)
+  triggerDownload(json, `setlist-backup-${new Date().toISOString().slice(0, 10)}.json`)
+}
+
+export async function exportAsRepertoire(): Promise<void> {
+  const songs = await db.songs.toArray()
+  const setlists = await db.setlists.toArray()
+
+  const backup: BackupFile = {
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    songs,
+    setlists,
+  }
+
+  const json = JSON.stringify(backup, null, 2)
+  triggerDownload(json, 'pino-import.json')
+}
+
+function triggerDownload(json: string, filename: string): void {
   const blob = new Blob([json], { type: 'application/json' })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
-  a.download = `setlist-backup-${new Date().toISOString().slice(0, 10)}.json`
+  a.download = filename
   a.click()
   URL.revokeObjectURL(url)
 }

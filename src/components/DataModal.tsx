@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
-import { X, Download, Upload, CheckCircle, AlertCircle, Loader2, Music2 } from 'lucide-react'
-import { exportData, importData, type ImportResult } from '../utils/exportImport'
+import { X, Download, Upload, CheckCircle, AlertCircle, Loader2, Music2, Save } from 'lucide-react'
+import { exportData, exportAsRepertoire, importData, type ImportResult } from '../utils/exportImport'
 import { useSongStore } from '../store/songStore'
 import { useSetlistStore } from '../store/setlistStore'
 
@@ -24,6 +24,7 @@ export function DataModal({ onClose }: DataModalProps) {
   const [result, setResult] = useState<ImportResult | null>(null)
   const [errorMsg, setErrorMsg] = useState('')
   const [exporting, setExporting] = useState(false)
+  const [savingRepertoire, setSavingRepertoire] = useState(false)
   const [bundleImporting, setBundleImporting] = useState(false)
 
   const hydrateSongs = useSongStore((s) => s.hydrate)
@@ -35,6 +36,15 @@ export function DataModal({ onClose }: DataModalProps) {
       await exportData()
     } finally {
       setExporting(false)
+    }
+  }
+
+  const handleSaveRepertoire = async () => {
+    setSavingRepertoire(true)
+    try {
+      await exportAsRepertoire()
+    } finally {
+      setSavingRepertoire(false)
     }
   }
 
@@ -106,11 +116,30 @@ export function DataModal({ onClose }: DataModalProps) {
             </button>
           </div>
 
+          {/* Update bundled repertoire */}
+          <div className="p-4 bg-emerald-900/20 border border-emerald-700/40 rounded-xl space-y-2">
+            <h3 className="font-medium text-slate-200">Update Repertoire File</h3>
+            <p className="text-sm text-slate-400">
+              Downloads your current songs as <span className="font-mono text-slate-300">pino-import.json</span>.
+              Save it to <span className="font-mono text-slate-300">public/</span> in your project folder,
+              then ask Claude to push it — so "Load Repertoire" always has your latest songs.
+            </p>
+            <button
+              onClick={handleSaveRepertoire}
+              disabled={savingRepertoire}
+              className="flex items-center gap-2 px-4 py-2.5 bg-emerald-700 hover:bg-emerald-600
+                         disabled:opacity-50 text-white rounded-lg text-sm font-medium transition-colors"
+            >
+              {savingRepertoire ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+              {savingRepertoire ? 'Preparing…' : 'Save as Repertoire File'}
+            </button>
+          </div>
+
           {/* Export */}
           <div className="p-4 bg-slate-700/40 border border-slate-700 rounded-xl space-y-2">
             <h3 className="font-medium text-slate-200">Export Backup</h3>
             <p className="text-sm text-slate-400">
-              Download all your songs and setlists as a JSON file.
+              Download all your songs and setlists as a dated JSON backup file.
             </p>
             <button
               onClick={handleExport}
