@@ -1,0 +1,50 @@
+name: Backup Repertoire
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'public/pino-import.json'
+
+# Skip if this is already a backup commit (avoids infinite loop)
+jobs:
+  backup:
+    if: "!contains(github.event.head_commit.message, '[repertoire-backup]')"
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout (with history)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 3
+
+      - name: Rotate backups
+        run: |
+          # backup-1 → backup-2 (drop the oldest if we already have 2)
+          if [ -f public/pino-import-backup-1.json ]; then
+            cp public/pino-import-backup-1.json public/pino-import-backup-2.json
+            echo "✓ Rotated backup-1 → backup-2"
+          fi
+
+          # previous version of pino-import.json → backup-1
+          if git show HEAD~1:public/pino-import.json > public/pino-import-backup-1.json 2>/dev/null; then
+            echo "✓ Saved previous pino-import.json as backup-1"
+          else
+            # First time — just copy current as backup-1
+            cp public/pino-import.json public/pino-import-backup-1.json
+            echo "✓ First backup: copied current as backup-1"
+          fi
+
+      - name: Commit backups
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add public/pino-import-backup-1.json public/pino-import-backup-2.json
+          if git diff --staged --quiet; then
+            echo "No backup changes to commit."
+          else
+            git commit -m "chore: rotate repertoire backups [repertoire-backup]"
+            git push
+          fi

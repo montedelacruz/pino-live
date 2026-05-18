@@ -66,10 +66,14 @@ export function DataModal({ onClose }: DataModalProps) {
 
   const handleBundledImport = async () => {
     setBundleImporting(true)
-    // import.meta.env.BASE_URL is '/' on localhost and '/pino-live/' on GitHub Pages
     const url = `${import.meta.env.BASE_URL}pino-import.json`
     await runImport(importFromUrl(url))
     setBundleImporting(false)
+  }
+
+  const handleBackupImport = async (n: 1 | 2) => {
+    const url = `${import.meta.env.BASE_URL}pino-import-backup-${n}.json`
+    await runImport(importFromUrl(url))
   }
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -100,20 +104,40 @@ export function DataModal({ onClose }: DataModalProps) {
           <div className="p-4 bg-violet-900/30 border border-violet-700/50 rounded-xl space-y-2">
             <h3 className="font-medium text-slate-200">Load Pino Repertoire</h3>
             <p className="text-sm text-slate-400">
-              One-click load of all 257 songs and 30 setlists from the bundled repertoire file.
-              Safe to run multiple times — existing songs are updated, not duplicated.
+              Load the current bundled repertoire. Safe to run multiple times — existing songs
+              are updated, not duplicated.
             </p>
-            <button
-              onClick={handleBundledImport}
-              disabled={status === 'importing' || bundleImporting}
-              className="flex items-center gap-2 px-4 py-2.5 bg-violet-600 hover:bg-violet-500
-                         disabled:opacity-50 text-white rounded-lg text-sm font-medium transition-colors"
-            >
-              {bundleImporting
-                ? <Loader2 size={16} className="animate-spin" />
-                : <Music2 size={16} />}
-              {bundleImporting ? 'Loading…' : 'Load Repertoire'}
-            </button>
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={handleBundledImport}
+                disabled={status === 'importing' || bundleImporting}
+                className="flex items-center gap-2 px-4 py-2.5 bg-violet-600 hover:bg-violet-500
+                           disabled:opacity-50 text-white rounded-lg text-sm font-medium transition-colors"
+              >
+                {bundleImporting
+                  ? <Loader2 size={16} className="animate-spin" />
+                  : <Music2 size={16} />}
+                {bundleImporting ? 'Loading…' : 'Load Current'}
+              </button>
+              <button
+                onClick={() => handleBackupImport(1)}
+                disabled={status === 'importing'}
+                title="Load the version before the current one"
+                className="flex items-center gap-2 px-3 py-2.5 bg-slate-700 hover:bg-slate-600
+                           disabled:opacity-50 text-slate-300 rounded-lg text-sm font-medium transition-colors"
+              >
+                Backup 1
+              </button>
+              <button
+                onClick={() => handleBackupImport(2)}
+                disabled={status === 'importing'}
+                title="Load two versions back"
+                className="flex items-center gap-2 px-3 py-2.5 bg-slate-700 hover:bg-slate-600
+                           disabled:opacity-50 text-slate-300 rounded-lg text-sm font-medium transition-colors"
+              >
+                Backup 2
+              </button>
+            </div>
           </div>
 
           {/* Update bundled repertoire */}
