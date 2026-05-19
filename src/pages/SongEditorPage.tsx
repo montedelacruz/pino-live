@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback, useRef } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { Trash2, Copy, Search, Save, Loader2 } from 'lucide-react'
 import { TopBar } from '../components/TopBar'
-import { LyricsSearchModal } from '../components/LyricsSearchModal'
+import { LyricsSearchModal, type LyricsSearchResult } from '../components/LyricsSearchModal'
 import { useSongStore } from '../store/songStore'
 import type { Song } from '../db/db'
 
@@ -289,8 +289,14 @@ export function SongEditorPage() {
         {showLyricsSearch && (
           <LyricsSearchModal
             initialQuery={[draft.title, draft.artist].filter(Boolean).join(' ')}
-            onSelect={(lyrics) => {
-              setField('lyrics', lyrics)
+            onSelect={(result: LyricsSearchResult) => {
+              // Always apply lyrics
+              setField('lyrics', result.lyrics)
+              // Fill title/artist/duration only if the field is currently empty
+              if (!draft.title.trim()) setField('title', result.title)
+              if (!draft.artist.trim()) setField('artist', result.artist)
+              if (!draft.durationSeconds && result.durationSeconds)
+                setField('durationSeconds', result.durationSeconds)
               setShowLyricsSearch(false)
             }}
             onClose={() => setShowLyricsSearch(false)}

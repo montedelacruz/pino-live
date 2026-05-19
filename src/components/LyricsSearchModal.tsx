@@ -3,9 +3,16 @@ import { X, Search, ChevronDown, ChevronUp, Loader2, Check } from 'lucide-react'
 import { searchTracks, fetchLyrics } from '../utils/lyricsSearch'
 import type { ItunesTrack } from '../utils/lyricsSearch'
 
+export interface LyricsSearchResult {
+  lyrics: string
+  title: string
+  artist: string
+  durationSeconds?: number
+}
+
 interface Props {
   initialQuery?: string
-  onSelect: (lyrics: string) => void
+  onSelect: (result: LyricsSearchResult) => void
   onClose: () => void
 }
 
@@ -69,9 +76,18 @@ export function LyricsSearchModal({ initialQuery = '', onSelect, onClose }: Prop
     }
   }
 
-  const handleUseLyrics = (trackId: number) => {
-    const lyrics = previewLyrics[trackId]
-    if (lyrics) { onSelect(lyrics); onClose() }
+  const handleUseLyrics = (track: ItunesTrack) => {
+    const lyrics = previewLyrics[track.trackId]
+    if (!lyrics) return
+    onSelect({
+      lyrics,
+      title: track.trackName,
+      artist: track.artistName,
+      durationSeconds: track.trackTimeMillis
+        ? Math.round(track.trackTimeMillis / 1000)
+        : undefined,
+    })
+    onClose()
   }
 
   return (
@@ -205,7 +221,7 @@ export function LyricsSearchModal({ initialQuery = '', onSelect, onClose }: Prop
                           </p>
                         </div>
                         <button
-                          onClick={() => handleUseLyrics(track.trackId)}
+                          onClick={() => handleUseLyrics(track)}
                           className="w-full py-2.5 bg-violet-600 hover:bg-violet-500 text-white
                                      rounded-xl font-medium text-sm transition-colors flex items-center
                                      justify-center gap-2"
