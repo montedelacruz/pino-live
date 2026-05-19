@@ -38,66 +38,55 @@ export function SongEditorPage() {
   const [draft, setDraft] = useState<DraftSong>(EMPTY_DRAFT)
   const [tagsInput, setTagsInput] = useState('')
   const [saving, setSaving] = useState(false)
+  const [isDirty, setIsDirty] = useState(false)
   const [showLyricsSearch, setShowLyricsSearch] = useState(false)
-  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const createdIdRef = useRef<string | null>(null)
-  // For new songs: track if the user has explicitly saved yet
-  const [newSongSaved, setNewSongSaved] = useState(false)
 
-  // Populate form when editing
+  // Populate form when editing an existing song
   useEffect(() => {
     if (!isNew && existingSong) {
       const { id: _id, createdAt: _c, updatedAt: _u, ...rest } = existingSong
       setDraft(rest)
       setTagsInput(existingSong.tags.join(', '))
+      setIsDirty(false)
     }
   }, [isNew, existingSong?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const parseTags = (raw: string) =>
     raw.split(',').map((t) => t.trim()).filter(Boolean)
 
-  // Explicit save for new songs
-  const handleSaveNew = useCallback(async () => {
-    if (!draft.title.trim()) return
-    setSaving(true)
-    const created = await addSong(draft)
-    createdIdRef.current = created.id
-    setNewSongSaved(true)
-    setSaving(false)
-    navigate(`/songs/${created.id}/edit`, { replace: true })
-  }, [draft, addSong, navigate])
-
-  // Debounced auto-save — only runs when editing an existing song
-  const scheduleSave = useCallback(
-    (data: DraftSong) => {
-      // New song: don't auto-save, wait for the Save button
-      if (isNew && !createdIdRef.current) return
-
-      if (saveTimer.current) clearTimeout(saveTimer.current)
-      if (!data.title.trim()) return
-
-      setSaving(true)
-      saveTimer.current = setTimeout(async () => {
-        const editId = createdIdRef.current ?? id!
-        await updateSong(editId, data)
-        setSaving(false)
-      }, 600)
-    },
-    [isNew, id, updateSong]
-  )
-
   const setField = <K extends keyof DraftSong>(key: K, value: DraftSong[K]) => {
-    const next = { ...draft, [key]: value }
-    setDraft(next)
-    scheduleSave(next)
+    setDraft((prev) => ({ ...prev, [key]: value }))
+    setIsDirty(true)
   }
 
   const handleTagsChange = (raw: string) => {
     setTagsInput(raw)
-    const next = { ...draft, tags: parseTags(raw) }
-    setDraft(next)
-    scheduleSave(next)
+    setDraft((prev) => ({ ...prev, tags: parseTags(raw) }))
+    setIsDirty(true)
   }
+
+  // Single save handler for both new and existing songs
+  const handleSave = useCallback(async () => {
+    if (!draft.title.trim() || saving) return
+    setSaving(true)
+    try {
+      if (isNew && !createdIdRef.current) {
+        // Create new song
+        const created = await addSong(draft)
+        createdIdRef.current = created.id
+        setIsDirty(false)
+        navigate(`/songs/${created.id}/edit`, { replace: true })
+      } else {
+        // Update existing song
+        const editId = createdIdRef.current ?? id!
+        await updateSong(editId, draft)
+        setIsDirty(false)
+      }
+    } finally {
+      setSaving(false)
+    }
+  }, [draft, isNew, id, addSong, updateSong, navigate, saving])
 
   const handleDelete = async () => {
     if (!window.confirm(`Delete "${draft.title || 'this song'}"? This cannot be undone.`)) return
@@ -128,6 +117,7 @@ export function SongEditorPage() {
   }
 
   const existingId = createdIdRef.current ?? (isNew ? null : id)
+  const canSave = draft.title.trim().length > 0 && !saving && (isNew || isDirty)
 
   return (
     <div className="flex flex-col flex-1 pb-8">
@@ -136,23 +126,27 @@ export function SongEditorPage() {
         showBack
         right={
           <div className="flex items-center gap-2">
-            {/* New song: explicit Save button */}
-            {isNew && !newSongSaved && (
+
+            {/* Save button — shown when new or when there are unsaved changes */}
+            {(isNew || isDirty) && (
               <button
-                onClick={handleSaveNew}
-                disabled={!draft.title.trim() || saving}
+                onClick={handleSave}
+                disabled={!canSave}
                 className="flex items-center gap-1.5 px-3 py-1.5 bg-violet-600 hover:bg-violet-500
                            disabled:opacity-40 text-white rounded-lg text-sm font-medium transition-colors"
               >
                 {saving
                   ? <Loader2 size={15} className="animate-spin" />
                   : <Save size={15} />}
-                Save
+                {saving ? 'Saving…' : 'Save'}
               </button>
             )}
-            {/* Existing song: auto-save indicator */}
-            {!isNew && saving && <span className="text-xs text-slate-400">Saving…</span>}
-            {!isNew && !saving && draft.title && <span className="text-xs text-slate-500">Saved</span>}
+
+            {/* Saved indicator — only when existing song with no unsaved changes */}
+            {!isNew && !isDirty && !saving && draft.title && (
+              <span className="text-xs text-slate-500">Saved</span>
+            )}
+
             {existingId && (
               <>
                 <button
@@ -297,6 +291,7 @@ export function SongEditorPage() {
             initialQuery={[draft.title, draft.artist].filter(Boolean).join(' ')}
             onSelect={(lyrics) => {
               setField('lyrics', lyrics)
+              setShowLyricsSearch(false)
             }}
             onClose={() => setShowLyricsSearch(false)}
           />
