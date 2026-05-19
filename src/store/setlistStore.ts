@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { db, type Setlist } from '../db/db'
 import { syncSetlistUp, deleteSetlistUp } from '../db/firestoreSync'
 import { useAuthStore } from './authStore'
+import { scheduleGitHubSync } from '../utils/githubSync'
 import { v4 as uuidv4 } from 'uuid'
 
 interface SetlistState {
@@ -38,6 +39,7 @@ export const useSetlistStore = create<SetlistState>((set, get) => ({
     set((s) => ({ setlists: [setlist, ...s.setlists] }))
     const u = uid()
     if (u) syncSetlistUp(u, setlist).catch(console.error)
+    scheduleGitHubSync(true)
     return setlist
   },
 
@@ -53,6 +55,7 @@ export const useSetlistStore = create<SetlistState>((set, get) => ({
       const sl = get().setlists.find((s) => s.id === id)
       if (sl) syncSetlistUp(u, { ...sl, ...updates }).catch(console.error)
     }
+    scheduleGitHubSync(false)
   },
 
   deleteSetlist: async (id) => {
@@ -60,6 +63,7 @@ export const useSetlistStore = create<SetlistState>((set, get) => ({
     set((s) => ({ setlists: s.setlists.filter((sl) => sl.id !== id) }))
     const u = uid()
     if (u) deleteSetlistUp(u, id).catch(console.error)
+    scheduleGitHubSync(true)
   },
 
   duplicateSetlist: async (id) => {
@@ -71,6 +75,7 @@ export const useSetlistStore = create<SetlistState>((set, get) => ({
     set((s) => ({ setlists: [copy, ...s.setlists] }))
     const u = uid()
     if (u) syncSetlistUp(u, copy).catch(console.error)
+    scheduleGitHubSync(true)
     return copy
   },
 }))

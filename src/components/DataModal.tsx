@@ -1,8 +1,9 @@
 import { useRef, useState } from 'react'
-import { X, Download, Upload, CheckCircle, AlertCircle, Loader2, Music2, Save } from 'lucide-react'
+import { X, Download, Upload, CheckCircle, AlertCircle, Loader2, Music2, Save, KeyRound } from 'lucide-react'
 import { exportData, exportAsRepertoire, importData, type ImportResult } from '../utils/exportImport'
 import { useSongStore } from '../store/songStore'
 import { useSetlistStore } from '../store/setlistStore'
+import { useSettingsStore } from '../store/settingsStore'
 
 interface DataModalProps {
   onClose: () => void
@@ -27,8 +28,18 @@ export function DataModal({ onClose }: DataModalProps) {
   const [savingRepertoire, setSavingRepertoire] = useState(false)
   const [bundleImporting, setBundleImporting] = useState(false)
 
+  const { githubPat, setGithubPat } = useSettingsStore()
+  const [patDraft, setPatDraft] = useState(githubPat)
+  const [patSaved, setPatSaved] = useState(false)
+
   const hydrateSongs = useSongStore((s) => s.hydrate)
   const hydrateSetlists = useSetlistStore((s) => s.hydrate)
+
+  const handleSavePat = () => {
+    setGithubPat(patDraft.trim())
+    setPatSaved(true)
+    setTimeout(() => setPatSaved(false), 2000)
+  }
 
   const handleExport = async () => {
     setExporting(true)
@@ -226,6 +237,39 @@ export function DataModal({ onClose }: DataModalProps) {
               </div>
             </div>
           )}
+
+          {/* GitHub sync token */}
+          <div className="p-4 bg-slate-700/40 border border-slate-700 rounded-xl space-y-2">
+            <div className="flex items-center gap-2">
+              <KeyRound size={15} className="text-slate-400" />
+              <h3 className="font-medium text-slate-200">GitHub Sync Token</h3>
+              {githubPat && (
+                <span className="text-xs px-2 py-0.5 bg-green-800/50 text-green-400 rounded-full">Active</span>
+              )}
+            </div>
+            <p className="text-sm text-slate-400">
+              Auto-pushes your repertoire to GitHub after every save so new devices always load the latest version.
+            </p>
+            <div className="flex gap-2">
+              <input
+                type="password"
+                value={patDraft}
+                onChange={(e) => setPatDraft(e.target.value)}
+                placeholder="github_pat_..."
+                className="flex-1 bg-slate-800 border border-slate-600 rounded-lg px-3 py-2
+                           text-slate-100 placeholder-slate-500 text-sm focus:outline-none
+                           focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+              />
+              <button
+                onClick={handleSavePat}
+                disabled={!patDraft.trim()}
+                className="px-3 py-2 bg-slate-600 hover:bg-slate-500 disabled:opacity-40
+                           text-white rounded-lg text-sm font-medium transition-colors"
+              >
+                {patSaved ? '✓ Saved' : 'Save'}
+              </button>
+            </div>
+          </div>
 
         </div>
       </div>
