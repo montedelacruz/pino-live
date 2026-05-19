@@ -10,9 +10,16 @@ if (!CLERK_KEY) {
   throw new Error('VITE_CLERK_PUBLISHABLE_KEY is not set')
 }
 
+// After sign-in/up, redirect back to the app root (works on both localhost and /pino-live/)
+const afterAuthUrl = `${import.meta.env.BASE_URL}`
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <ClerkProvider publishableKey={CLERK_KEY}>
+    <ClerkProvider
+      publishableKey={CLERK_KEY}
+      afterSignInUrl={afterAuthUrl}
+      afterSignUpUrl={afterAuthUrl}
+    >
       <App />
     </ClerkProvider>
   </StrictMode>,
