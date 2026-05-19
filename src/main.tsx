@@ -19,6 +19,7 @@ createRoot(document.getElementById('root')!).render(
       publishableKey={CLERK_KEY}
       afterSignInUrl={afterAuthUrl}
       afterSignUpUrl={afterAuthUrl}
+      afterSignOutUrl={afterAuthUrl}
     >
       <App />
     </ClerkProvider>
