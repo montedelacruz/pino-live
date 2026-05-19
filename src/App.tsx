@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { HashRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
+import { useUser } from '@clerk/clerk-react'
 import { BottomNav } from './components/BottomNav'
 import { SignInScreen } from './components/SignInScreen'
 import { HomePage } from './pages/HomePage'
@@ -13,7 +14,7 @@ import { RehearsalPage } from './pages/RehearsalPage'
 import { PracticePage } from './pages/PracticePage'
 import { useSongStore } from './store/songStore'
 import { useSetlistStore } from './store/setlistStore'
-import { useAuthStore } from './store/authStore'
+import { setCurrentUid } from './store/currentUser'
 import { subscribeSongs, subscribeSetlists, syncSongUp, syncSetlistUp } from './db/firestoreSync'
 import { importData } from './utils/exportImport'
 import { Loader2 } from 'lucide-react'
@@ -65,50 +66,48 @@ async function autoLoadRepertoire(
 }
 
 export default function App() {
-  const { user, loading: authLoading, init } = useAuthStore()
+  const { user, isLoaded } = useUser()
   const hydrateSongs = useSongStore((s) => s.hydrate)
   const hydrateSetlists = useSetlistStore((s) => s.hydrate)
   const setSongs = useSongStore((s) => s.setSongs)
   const setSetlists = useSetlistStore((s) => s.setSetlists)
   const songs = useSongStore((s) => s.songs)
-  const songsLoading = useSongStore((s) => s.loading)  // watch loading state
+  const songsLoading = useSongStore((s) => s.loading)
   const autoLoadDone = useRef(false)
 
-  // Boot Firebase auth listener once
+  // Keep the module-level uid in sync with Clerk so stores can access it
   useEffect(() => {
-    const unsub = init()
-    return unsub
-  }, [init])
+    setCurrentUid(user?.id ?? null)
+  }, [user?.id])
 
   // When signed in → subscribe to Firestore live updates
   // When signed out → fall back to local IndexedDB
   useEffect(() => {
-    if (authLoading) return
+    if (!isLoaded) return
     if (!user) {
       hydrateSongs()
       hydrateSetlists()
       return
     }
-    const unsubSongs = subscribeSongs(user.uid, setSongs)
-    const unsubSetlists = subscribeSetlists(user.uid, setSetlists)
+    const unsubSongs = subscribeSongs(user.id, setSongs)
+    const unsubSetlists = subscribeSetlists(user.id, setSetlists)
     return () => { unsubSongs(); unsubSetlists() }
-  }, [user, authLoading]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [user?.id, isLoaded]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Auto-load repertoire when Firestore is confirmed empty (after first snapshot)
   useEffect(() => {
-    if (!user || authLoading) return
+    if (!user || !isLoaded) return
     if (autoLoadDone.current) return
-    // Wait until Firestore has fired its first snapshot (loading becomes false)
     if (songsLoading) return
     if (songs.length > 0) { autoLoadDone.current = true; return }
 
     // Confirmed empty — auto-load bundled repertoire and push to Firestore
     autoLoadDone.current = true
-    autoLoadRepertoire(user.uid, setSongs, setSetlists)
-  }, [songs, songsLoading, user, authLoading]) // eslint-disable-line react-hooks/exhaustive-deps
+    autoLoadRepertoire(user.id, setSongs, setSetlists)
+  }, [songs, songsLoading, user?.id, isLoaded]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Spinner while Firebase checks auth state
-  if (authLoading) {
+  // Spinner while Clerk checks auth state
+  if (!isLoaded) {
     return (
       <div className="fixed inset-0 bg-slate-950 flex items-center justify-center">
         <Loader2 size={32} className="animate-spin text-violet-400" />

@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { db, type Setlist } from '../db/db'
 import { syncSetlistUp, deleteSetlistUp } from '../db/firestoreSync'
-import { useAuthStore } from './authStore'
+import { getCurrentUid } from './currentUser'
 import { scheduleGitHubSync } from '../utils/githubSync'
 import { v4 as uuidv4 } from 'uuid'
 
@@ -16,7 +16,7 @@ interface SetlistState {
   duplicateSetlist: (id: string) => Promise<Setlist | undefined>
 }
 
-const uid = () => useAuthStore.getState().user?.uid ?? null
+const uid = () => getCurrentUid()
 
 export const useSetlistStore = create<SetlistState>((set, get) => ({
   setlists: [],

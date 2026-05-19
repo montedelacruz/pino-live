@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { db, type Song } from '../db/db'
 import { syncSongUp, deleteSongUp } from '../db/firestoreSync'
-import { useAuthStore } from './authStore'
+import { getCurrentUid } from './currentUser'
 import { scheduleGitHubSync } from '../utils/githubSync'
 import { v4 as uuidv4 } from 'uuid'
 
@@ -16,7 +16,7 @@ interface SongState {
   duplicateSong: (id: string) => Promise<Song | undefined>
 }
 
-const uid = () => useAuthStore.getState().user?.uid ?? null
+const uid = () => getCurrentUid()
 
 export const useSongStore = create<SongState>((set, get) => ({
   songs: [],
