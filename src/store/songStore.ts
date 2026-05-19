@@ -29,8 +29,12 @@ export const useSongStore = create<SongState>((set, get) => ({
 
   // Called by Firestore listener to push cloud data into local state + IndexedDB
   setSongs: (songs) => {
+    // If Firestore is empty, don't wipe local data — let auto-load handle seeding
+    if (songs.length === 0) {
+      set({ loading: false })
+      return
+    }
     set({ songs: [...songs].sort((a, b) => b.updatedAt - a.updatedAt), loading: false })
-    // Also keep local IndexedDB in sync
     db.songs.clear().then(() => db.songs.bulkAdd(songs))
   },
 

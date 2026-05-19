@@ -14,7 +14,7 @@ import { PracticePage } from './pages/PracticePage'
 import { useSongStore } from './store/songStore'
 import { useSetlistStore } from './store/setlistStore'
 import { useAuthStore } from './store/authStore'
-import { subscribeSongs, subscribeSetlists } from './db/firestoreSync'
+import { subscribeSongs, subscribeSetlists, syncSongUp, syncSetlistUp } from './db/firestoreSync'
 import { importData } from './utils/exportImport'
 import { Loader2 } from 'lucide-react'
 
@@ -31,10 +31,12 @@ function Layout({ children }: { children: React.ReactNode }) {
   )
 }
 
-/** Auto-import the bundled repertoire if Firestore is empty on first load */
+/** Auto-import the bundled repertoire if Firestore is empty on first load,
+ *  then push everything up to Firestore so other devices can see it. */
 async function autoLoadRepertoire(
-  setSongs: (s: Parameters<ReturnType<typeof useSongStore.getState>['setSongs']>[0]) => void,
-  setSetlists: (s: Parameters<ReturnType<typeof useSetlistStore.getState>['setSetlists']>[0]) => void,
+  uid: string,
+  setSongs: ReturnType<typeof useSongStore.getState>['setSongs'],
+  setSetlists: ReturnType<typeof useSetlistStore.getState>['setSetlists'],
 ) {
   try {
     const url = `${import.meta.env.BASE_URL}pino-import.json`
@@ -42,14 +44,21 @@ async function autoLoadRepertoire(
     if (!res.ok) return
     const blob = await res.blob()
     const file = new File([blob], 'pino-import.json', { type: 'application/json' })
-    const result = await importData(file)
-    // Push loaded data into the stores so UI updates immediately
+    await importData(file)
+
     const { db } = await import('./db/db')
     const songs = await db.songs.toArray()
     const setlists = await db.setlists.toArray()
+
+    // Update local UI immediately
     setSongs(songs)
     setSetlists(setlists)
-    console.info(`Auto-loaded repertoire: ${result.songsAdded} songs, ${result.setlistsAdded} setlists`)
+
+    // Push every song and setlist up to Firestore so all devices sync
+    for (const song of songs) syncSongUp(uid, song).catch(console.error)
+    for (const sl of setlists) syncSetlistUp(uid, sl).catch(console.error)
+
+    console.info(`Auto-loaded & synced: ${songs.length} songs, ${setlists.length} setlists`)
   } catch (err) {
     console.warn('Auto-load repertoire failed:', err)
   }
@@ -93,9 +102,9 @@ export default function App() {
     if (songStore.loading) return
     if (songs.length > 0) { autoLoadDone.current = true; return }
 
-    // Empty database — auto-load bundled repertoire
+    // Empty database — auto-load bundled repertoire and push to Firestore
     autoLoadDone.current = true
-    autoLoadRepertoire(setSongs, setSetlists)
+    autoLoadRepertoire(user.uid, setSongs, setSetlists)
   }, [songs, user, authLoading]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Spinner while Firebase checks auth state

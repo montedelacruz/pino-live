@@ -28,6 +28,10 @@ export const useSetlistStore = create<SetlistState>((set, get) => ({
   },
 
   setSetlists: (setlists) => {
+    if (setlists.length === 0) {
+      set({ loading: false })
+      return
+    }
     set({ setlists: [...setlists].sort((a, b) => b.updatedAt - a.updatedAt), loading: false })
     db.setlists.clear().then(() => db.setlists.bulkAdd(setlists))
   },
