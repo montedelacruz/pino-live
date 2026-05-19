@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { X, Search, ExternalLink, ChevronDown, ChevronUp, Loader2, Check } from 'lucide-react'
-import { searchTracks, fetchLyricsOvh } from '../utils/lyricsSearch'
+import { searchTracks, fetchLyrics } from '../utils/lyricsSearch'
 import type { ItunesTrack } from '../utils/lyricsSearch'
 
 interface Props {
@@ -57,7 +57,7 @@ export function LyricsSearchModal({ initialQuery = '', onSelect, onClose }: Prop
 
     setLoadingLyrics(track.trackId)
     try {
-      const lyrics = await fetchLyricsOvh(track.artistName, track.trackName)
+      const lyrics = await fetchLyrics(track.artistName, track.trackName, track.trackTimeMillis)
       setPreviewLyrics((p) => ({ ...p, [track.trackId]: lyrics }))
     } catch (err) {
       setLyricsError((p) => ({
@@ -89,7 +89,7 @@ export function LyricsSearchModal({ initialQuery = '', onSelect, onClose }: Prop
         <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-slate-800 flex-shrink-0">
           <div>
             <h2 className="text-lg font-semibold text-slate-100">Search Lyrics</h2>
-            <p className="text-xs text-slate-500 mt-0.5">iTunes search · lyrics.ovh · no account needed</p>
+            <p className="text-xs text-slate-500 mt-0.5">iTunes search · LRCLIB · no account needed</p>
           </div>
           <button
             onClick={onClose}
