@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { Trash2, Copy, Search } from 'lucide-react'
+import { Trash2, Copy, Search, Save, Loader2 } from 'lucide-react'
 import { TopBar } from '../components/TopBar'
 import { LyricsSearchModal } from '../components/LyricsSearchModal'
 import { useSongStore } from '../store/songStore'
@@ -41,6 +41,8 @@ export function SongEditorPage() {
   const [showLyricsSearch, setShowLyricsSearch] = useState(false)
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const createdIdRef = useRef<string | null>(null)
+  // For new songs: track if the user has explicitly saved yet
+  const [newSongSaved, setNewSongSaved] = useState(false)
 
   // Populate form when editing
   useEffect(() => {
@@ -54,27 +56,34 @@ export function SongEditorPage() {
   const parseTags = (raw: string) =>
     raw.split(',').map((t) => t.trim()).filter(Boolean)
 
-  // Debounced auto-save
+  // Explicit save for new songs
+  const handleSaveNew = useCallback(async () => {
+    if (!draft.title.trim()) return
+    setSaving(true)
+    const created = await addSong(draft)
+    createdIdRef.current = created.id
+    setNewSongSaved(true)
+    setSaving(false)
+    navigate(`/songs/${created.id}/edit`, { replace: true })
+  }, [draft, addSong, navigate])
+
+  // Debounced auto-save — only runs when editing an existing song
   const scheduleSave = useCallback(
     (data: DraftSong) => {
+      // New song: don't auto-save, wait for the Save button
+      if (isNew && !createdIdRef.current) return
+
       if (saveTimer.current) clearTimeout(saveTimer.current)
-      if (!data.title.trim()) return // don't save until there's a title
+      if (!data.title.trim()) return
 
       setSaving(true)
       saveTimer.current = setTimeout(async () => {
-        if (isNew && !createdIdRef.current) {
-          const created = await addSong(data)
-          createdIdRef.current = created.id
-          // Navigate to the edit URL without adding a history entry
-          navigate(`/songs/${created.id}/edit`, { replace: true })
-        } else {
-          const editId = createdIdRef.current ?? id!
-          await updateSong(editId, data)
-        }
+        const editId = createdIdRef.current ?? id!
+        await updateSong(editId, data)
         setSaving(false)
       }, 600)
     },
-    [isNew, id, addSong, updateSong, navigate]
+    [isNew, id, updateSong]
   )
 
   const setField = <K extends keyof DraftSong>(key: K, value: DraftSong[K]) => {
@@ -127,8 +136,23 @@ export function SongEditorPage() {
         showBack
         right={
           <div className="flex items-center gap-2">
-            {saving && <span className="text-xs text-slate-400">Saving…</span>}
-            {!saving && draft.title && <span className="text-xs text-slate-500">Saved</span>}
+            {/* New song: explicit Save button */}
+            {isNew && !newSongSaved && (
+              <button
+                onClick={handleSaveNew}
+                disabled={!draft.title.trim() || saving}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-violet-600 hover:bg-violet-500
+                           disabled:opacity-40 text-white rounded-lg text-sm font-medium transition-colors"
+              >
+                {saving
+                  ? <Loader2 size={15} className="animate-spin" />
+                  : <Save size={15} />}
+                Save
+              </button>
+            )}
+            {/* Existing song: auto-save indicator */}
+            {!isNew && saving && <span className="text-xs text-slate-400">Saving…</span>}
+            {!isNew && !saving && draft.title && <span className="text-xs text-slate-500">Saved</span>}
             {existingId && (
               <>
                 <button
