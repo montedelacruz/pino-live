@@ -100,31 +100,29 @@ export function DataModal({ onClose }: DataModalProps) {
 
         <div className="px-5 py-5 space-y-4">
 
-          {/* Load bundled repertoire — prominent, first */}
-          <div className="p-4 bg-violet-900/30 border border-violet-700/50 rounded-xl space-y-2">
-            <h3 className="font-medium text-slate-200">Load Pino Repertoire</h3>
+          {/* Emergency restore — backups only */}
+          <div className="p-4 bg-slate-700/40 border border-slate-700 rounded-xl space-y-2">
+            <h3 className="font-medium text-slate-200">Restore Repertoire</h3>
             <p className="text-sm text-slate-400">
-              Load the current bundled repertoire. Safe to run multiple times — existing songs
-              are updated, not duplicated.
+              Emergency restore from a previous cloud backup. Use only if something went wrong —
+              the repertoire loads automatically on sign-in when needed.
             </p>
             <div className="flex flex-wrap gap-2">
               <button
                 onClick={handleBundledImport}
                 disabled={status === 'importing' || bundleImporting}
-                className="flex items-center gap-2 px-4 py-2.5 bg-violet-600 hover:bg-violet-500
-                           disabled:opacity-50 text-white rounded-lg text-sm font-medium transition-colors"
+                className="flex items-center gap-2 px-3 py-2.5 bg-slate-600 hover:bg-slate-500
+                           disabled:opacity-50 text-slate-200 rounded-lg text-sm font-medium transition-colors"
               >
-                {bundleImporting
-                  ? <Loader2 size={16} className="animate-spin" />
-                  : <Music2 size={16} />}
-                {bundleImporting ? 'Loading…' : 'Load Current'}
+                {bundleImporting ? <Loader2 size={15} className="animate-spin" /> : <Music2 size={15} />}
+                {bundleImporting ? 'Loading…' : 'Current'}
               </button>
               <button
                 onClick={() => handleBackupImport(1)}
                 disabled={status === 'importing'}
                 title="Load the version before the current one"
-                className="flex items-center gap-2 px-3 py-2.5 bg-slate-700 hover:bg-slate-600
-                           disabled:opacity-50 text-slate-300 rounded-lg text-sm font-medium transition-colors"
+                className="flex items-center gap-2 px-3 py-2.5 bg-slate-600 hover:bg-slate-500
+                           disabled:opacity-50 text-slate-200 rounded-lg text-sm font-medium transition-colors"
               >
                 Backup 1
               </button>
@@ -132,8 +130,8 @@ export function DataModal({ onClose }: DataModalProps) {
                 onClick={() => handleBackupImport(2)}
                 disabled={status === 'importing'}
                 title="Load two versions back"
-                className="flex items-center gap-2 px-3 py-2.5 bg-slate-700 hover:bg-slate-600
-                           disabled:opacity-50 text-slate-300 rounded-lg text-sm font-medium transition-colors"
+                className="flex items-center gap-2 px-3 py-2.5 bg-slate-600 hover:bg-slate-500
+                           disabled:opacity-50 text-slate-200 rounded-lg text-sm font-medium transition-colors"
               >
                 Backup 2
               </button>

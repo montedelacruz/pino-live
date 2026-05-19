@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { HashRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { BottomNav } from './components/BottomNav'
 import { SignInScreen } from './components/SignInScreen'
@@ -15,6 +15,7 @@ import { useSongStore } from './store/songStore'
 import { useSetlistStore } from './store/setlistStore'
 import { useAuthStore } from './store/authStore'
 import { subscribeSongs, subscribeSetlists } from './db/firestoreSync'
+import { importData } from './utils/exportImport'
 import { Loader2 } from 'lucide-react'
 
 const FULLSCREEN_ROUTES = ['/performance/', '/practice']
@@ -30,12 +31,38 @@ function Layout({ children }: { children: React.ReactNode }) {
   )
 }
 
+/** Auto-import the bundled repertoire if Firestore is empty on first load */
+async function autoLoadRepertoire(
+  setSongs: (s: Parameters<ReturnType<typeof useSongStore.getState>['setSongs']>[0]) => void,
+  setSetlists: (s: Parameters<ReturnType<typeof useSetlistStore.getState>['setSetlists']>[0]) => void,
+) {
+  try {
+    const url = `${import.meta.env.BASE_URL}pino-import.json`
+    const res = await fetch(url)
+    if (!res.ok) return
+    const blob = await res.blob()
+    const file = new File([blob], 'pino-import.json', { type: 'application/json' })
+    const result = await importData(file)
+    // Push loaded data into the stores so UI updates immediately
+    const { db } = await import('./db/db')
+    const songs = await db.songs.toArray()
+    const setlists = await db.setlists.toArray()
+    setSongs(songs)
+    setSetlists(setlists)
+    console.info(`Auto-loaded repertoire: ${result.songsAdded} songs, ${result.setlistsAdded} setlists`)
+  } catch (err) {
+    console.warn('Auto-load repertoire failed:', err)
+  }
+}
+
 export default function App() {
   const { user, loading: authLoading, init } = useAuthStore()
   const hydrateSongs = useSongStore((s) => s.hydrate)
   const hydrateSetlists = useSetlistStore((s) => s.hydrate)
   const setSongs = useSongStore((s) => s.setSongs)
   const setSetlists = useSetlistStore((s) => s.setSetlists)
+  const songs = useSongStore((s) => s.songs)
+  const autoLoadDone = useRef(false)
 
   // Boot Firebase auth listener once
   useEffect(() => {
@@ -56,6 +83,20 @@ export default function App() {
     const unsubSetlists = subscribeSetlists(user.uid, setSetlists)
     return () => { unsubSongs(); unsubSetlists() }
   }, [user, authLoading]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Auto-load repertoire when Firestore is confirmed empty (after first snapshot)
+  useEffect(() => {
+    if (!user || authLoading) return
+    if (autoLoadDone.current) return
+    const songStore = useSongStore.getState()
+    // Wait until loading is complete and we have confirmed 0 songs
+    if (songStore.loading) return
+    if (songs.length > 0) { autoLoadDone.current = true; return }
+
+    // Empty database — auto-load bundled repertoire
+    autoLoadDone.current = true
+    autoLoadRepertoire(setSongs, setSetlists)
+  }, [songs, user, authLoading]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Spinner while Firebase checks auth state
   if (authLoading) {
