@@ -4,6 +4,9 @@ import { exportData, exportAsRepertoire, importData, type ImportResult } from '.
 import { useSongStore } from '../store/songStore'
 import { useSetlistStore } from '../store/setlistStore'
 import { useSettingsStore } from '../store/settingsStore'
+import { syncSongUp, syncSetlistUp } from '../db/firestoreSync'
+import { getCurrentUid } from '../store/currentUser'
+import { db } from '../db/db'
 
 interface DataModalProps {
   onClose: () => void
@@ -69,6 +72,18 @@ export function DataModal({ onClose }: DataModalProps) {
       setStatus('done')
       await hydrateSongs()
       await hydrateSetlists()
+
+      // Push everything to Firestore so cloud matches the imported data
+      const uid = getCurrentUid()
+      if (uid) {
+        const [songs, setlists] = await Promise.all([
+          db.songs.toArray(),
+          db.setlists.toArray(),
+        ])
+        for (const song of songs) syncSongUp(uid, song).catch(console.error)
+        for (const sl of setlists) syncSetlistUp(uid, sl).catch(console.error)
+        console.info(`Pushed ${songs.length} songs and ${setlists.length} setlists to Firestore`)
+      }
     } catch (err) {
       setErrorMsg(err instanceof Error ? err.message : 'Unknown error')
       setStatus('error')
