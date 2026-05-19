@@ -1,7 +1,9 @@
 import { NavLink } from 'react-router-dom'
-import { Home, Music2, ListMusic, Shuffle } from 'lucide-react'
+import { Home, Music2, ListMusic, Shuffle, LogOut } from 'lucide-react'
+import { useAuthStore } from '../store/authStore'
 
 export function BottomNav() {
+  const { user, signOut } = useAuthStore()
   const base = 'flex flex-col items-center gap-1 flex-1 py-3 text-xs font-medium transition-colors'
   const active = 'text-violet-400'
   const inactive = 'text-slate-400 hover:text-slate-200'
@@ -24,6 +26,18 @@ export function BottomNav() {
         <Shuffle size={22} />
         <span>Rehearsal</span>
       </NavLink>
+      {user && (
+        <button
+          onClick={() => signOut()}
+          title={`Signed in as ${user.email}`}
+          className={`${base} text-slate-500 hover:text-red-400`}
+        >
+          {user.photoURL
+            ? <img src={user.photoURL} alt="" className="w-6 h-6 rounded-full" />
+            : <LogOut size={22} />}
+          <span>Sign out</span>
+        </button>
+      )}
     </nav>
   )
 }

@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { HashRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { BottomNav } from './components/BottomNav'
+import { SignInScreen } from './components/SignInScreen'
 import { HomePage } from './pages/HomePage'
 import { LibraryPage } from './pages/LibraryPage'
 import { SongEditorPage } from './pages/SongEditorPage'
@@ -12,6 +13,9 @@ import { RehearsalPage } from './pages/RehearsalPage'
 import { PracticePage } from './pages/PracticePage'
 import { useSongStore } from './store/songStore'
 import { useSetlistStore } from './store/setlistStore'
+import { useAuthStore } from './store/authStore'
+import { subscribeSongs, subscribeSetlists } from './db/firestoreSync'
+import { Loader2 } from 'lucide-react'
 
 const FULLSCREEN_ROUTES = ['/performance/', '/practice']
 
@@ -27,13 +31,45 @@ function Layout({ children }: { children: React.ReactNode }) {
 }
 
 export default function App() {
+  const { user, loading: authLoading, init } = useAuthStore()
   const hydrateSongs = useSongStore((s) => s.hydrate)
   const hydrateSetlists = useSetlistStore((s) => s.hydrate)
+  const setSongs = useSongStore((s) => s.setSongs)
+  const setSetlists = useSetlistStore((s) => s.setSetlists)
 
+  // Boot Firebase auth listener once
   useEffect(() => {
-    hydrateSongs()
-    hydrateSetlists()
-  }, [hydrateSongs, hydrateSetlists])
+    const unsub = init()
+    return unsub
+  }, [init])
+
+  // When signed in → subscribe to Firestore live updates
+  // When signed out → fall back to local IndexedDB
+  useEffect(() => {
+    if (authLoading) return
+    if (!user) {
+      hydrateSongs()
+      hydrateSetlists()
+      return
+    }
+    const unsubSongs = subscribeSongs(user.uid, setSongs)
+    const unsubSetlists = subscribeSetlists(user.uid, setSetlists)
+    return () => { unsubSongs(); unsubSetlists() }
+  }, [user, authLoading]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Spinner while Firebase checks auth state
+  if (authLoading) {
+    return (
+      <div className="fixed inset-0 bg-slate-950 flex items-center justify-center">
+        <Loader2 size={32} className="animate-spin text-violet-400" />
+      </div>
+    )
+  }
+
+  // Sign-in wall
+  if (!user) {
+    return <SignInScreen />
+  }
 
   return (
     <HashRouter>
