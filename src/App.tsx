@@ -71,6 +71,7 @@ export default function App() {
   const setSongs = useSongStore((s) => s.setSongs)
   const setSetlists = useSetlistStore((s) => s.setSetlists)
   const songs = useSongStore((s) => s.songs)
+  const songsLoading = useSongStore((s) => s.loading)  // watch loading state
   const autoLoadDone = useRef(false)
 
   // Boot Firebase auth listener once
@@ -97,15 +98,14 @@ export default function App() {
   useEffect(() => {
     if (!user || authLoading) return
     if (autoLoadDone.current) return
-    const songStore = useSongStore.getState()
-    // Wait until loading is complete and we have confirmed 0 songs
-    if (songStore.loading) return
+    // Wait until Firestore has fired its first snapshot (loading becomes false)
+    if (songsLoading) return
     if (songs.length > 0) { autoLoadDone.current = true; return }
 
-    // Empty database — auto-load bundled repertoire and push to Firestore
+    // Confirmed empty — auto-load bundled repertoire and push to Firestore
     autoLoadDone.current = true
     autoLoadRepertoire(user.uid, setSongs, setSetlists)
-  }, [songs, user, authLoading]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [songs, songsLoading, user, authLoading]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Spinner while Firebase checks auth state
   if (authLoading) {
