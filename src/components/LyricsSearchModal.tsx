@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { X, Search, ExternalLink, ChevronDown, ChevronUp, Loader2, Check } from 'lucide-react'
+import { X, Search, ChevronDown, ChevronUp, Loader2, Check } from 'lucide-react'
 import { searchTracks, fetchLyrics } from '../utils/lyricsSearch'
 import type { ItunesTrack } from '../utils/lyricsSearch'
 
@@ -74,8 +74,6 @@ export function LyricsSearchModal({ initialQuery = '', onSelect, onClose }: Prop
     if (lyrics) { onSelect(lyrics); onClose() }
   }
 
-  const geniusUrl = `https://genius.com/search?q=${encodeURIComponent(query)}`
-
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
       {/* Backdrop */}
@@ -140,11 +138,6 @@ export function LyricsSearchModal({ initialQuery = '', onSelect, onClose }: Prop
           {searchError && !searching && (
             <div className="flex flex-col items-center justify-center py-10 gap-4 text-slate-400">
               <p className="text-sm">{searchError}</p>
-              <a href={geniusUrl} target="_blank" rel="noreferrer"
-                className="flex items-center gap-1.5 text-sm text-violet-400 hover:text-violet-300 underline underline-offset-2">
-                <ExternalLink size={14} />
-                Search on Genius instead
-              </a>
             </div>
           )}
 
@@ -202,12 +195,6 @@ export function LyricsSearchModal({ initialQuery = '', onSelect, onClose }: Prop
                     {lyricErr && !isLoadingThis && (
                       <div className="flex flex-col items-center gap-3 py-3">
                         <p className="text-sm text-slate-500">{lyricErr}</p>
-                        <a href={`https://genius.com/search?q=${encodeURIComponent(track.trackName + ' ' + track.artistName)}`}
-                          target="_blank" rel="noreferrer"
-                          className="flex items-center gap-1.5 text-sm text-violet-400 hover:text-violet-300 underline underline-offset-2">
-                          <ExternalLink size={13} />
-                          Search this song on Genius
-                        </a>
                       </div>
                     )}
                     {lyrics && !isLoadingThis && (
@@ -234,16 +221,6 @@ export function LyricsSearchModal({ initialQuery = '', onSelect, onClose }: Prop
             )
           })}
 
-          {/* Genius fallback footer */}
-          {!searching && results.length > 0 && (
-            <div className="pt-2 pb-1 flex justify-center">
-              <a href={geniusUrl} target="_blank" rel="noreferrer"
-                className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-300 transition-colors">
-                <ExternalLink size={12} />
-                Not what you're looking for? Search on Genius
-              </a>
-            </div>
-          )}
 
           {/* Empty state */}
           {!searching && results.length === 0 && !searchError && (
