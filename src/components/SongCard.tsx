@@ -4,9 +4,10 @@ import { Music2, ChevronRight } from 'lucide-react'
 
 interface SongCardProps {
   song: Song
+  onClick?: () => void
 }
 
-export function SongCard({ song }: SongCardProps) {
+export function SongCard({ song, onClick }: SongCardProps) {
   const navigate = useNavigate()
 
   const meta = [song.artist, song.key, song.genre, song.language]
@@ -15,7 +16,7 @@ export function SongCard({ song }: SongCardProps) {
 
   return (
     <button
-      onClick={() => navigate(`/songs/${song.id}`)}
+      onClick={onClick ?? (() => navigate(`/songs/${song.id}`))}
       className="w-full flex items-center gap-4 px-4 py-3.5 bg-slate-800 hover:bg-slate-750
                  border border-slate-700 rounded-xl text-left transition-colors group"
     >

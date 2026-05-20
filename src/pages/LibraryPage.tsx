@@ -135,8 +135,16 @@ export function LibraryPage() {
             {search ? 'No songs match your search.' : 'No songs yet. Add your first song!'}
           </div>
         )}
-        {displayedSongs.map((song) => (
-          <SongCard key={song.id} song={song} />
+        {displayedSongs.map((song, i) => (
+          <SongCard
+            key={song.id}
+            song={song}
+            onClick={() =>
+              navigate(`/songs/${song.id}`, {
+                state: { songIds: displayedSongs.map((s) => s.id), index: i },
+              })
+            }
+          />
         ))}
       </div>
     </div>
