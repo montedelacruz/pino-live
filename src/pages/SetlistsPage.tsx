@@ -55,7 +55,7 @@ export function SetlistsPage() {
     return (
       <button
         onClick={() => navigate(`/setlists/${sl.id}/edit`)}
-        className={`w-full flex flex-col gap-1.5 p-2 rounded-xl text-left transition-colors group
+        className={`w-full flex flex-col gap-1 p-1.5 rounded-lg text-left transition-colors group
                     border
                     ${isAuto
                       ? 'bg-violet-950/50 border-violet-700/40 hover:bg-violet-900/50 hover:border-violet-600/60'
@@ -213,7 +213,7 @@ export function SetlistsPage() {
               <ListMusic size={11} />
               Manual
             </h2>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-5 gap-1.5">
               {manual.map((sl) => <SetlistCard key={sl.id} sl={sl} />)}
             </div>
           </section>
@@ -226,7 +226,7 @@ export function SetlistsPage() {
               <Sparkles size={11} />
               Smart
             </h2>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-5 gap-1.5">
               {auto.map((sl) => <SetlistCard key={sl.id} sl={sl} />)}
             </div>
           </section>
