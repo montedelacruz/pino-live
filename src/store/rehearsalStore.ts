@@ -110,20 +110,20 @@ export function buildPracticeSession(
     pool = [...allSongs]
   }
 
-  // 2. Needs-work filter
-  if (config.onlyNeedsWork) {
-    pool = pool.filter((s) => s.needsWork === true)
-  }
-
-  if (!pool.length) return []
-
-  // 3. Order
+  // 2. Build history maps first (used for filter AND ordering)
   const lastPracticedMap = new Map<string, number>()
   for (const e of entries) {
     const prev = lastPracticedMap.get(e.songId)
     if (!prev || e.practicedAt > prev) lastPracticedMap.set(e.songId, e.practicedAt)
   }
   const needsWorkSet = new Set(entries.filter((e) => e.result === 'needs_work').map((e) => e.songId))
+
+  // Needs-work filter: check song flag OR practice-history "needs_work" result
+  if (config.onlyNeedsWork) {
+    pool = pool.filter((s) => s.needsWork === true || needsWorkSet.has(s.id))
+  }
+
+  if (!pool.length) return []
 
   let ordered: Song[]
   switch (config.orderMode) {

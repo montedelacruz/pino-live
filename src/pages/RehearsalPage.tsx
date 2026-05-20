@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Play, Music2, Flame, SlidersHorizontal, History, ChevronDown, ChevronUp } from 'lucide-react'
+import { Play, Music2, Flame, SlidersHorizontal, History, ChevronDown, ChevronUp, RotateCcw } from 'lucide-react'
 import { TopBar } from '../components/TopBar'
 import { PracticeConfigPanel } from '../components/PracticeConfigPanel'
 import { useSongStore } from '../store/songStore'
 import { useSetlistStore } from '../store/setlistStore'
-import { useRehearsalStore } from '../store/rehearsalStore'
+import { useRehearsalStore, DEFAULT_CONFIG } from '../store/rehearsalStore'
 import { usePracticeHistoryStore } from '../store/practiceHistoryStore'
 import type { Song } from '../db/db'
 
@@ -82,18 +82,30 @@ export function RehearsalPage() {
 
       {/* ── Config section ── */}
       <div className="mx-4 mt-4">
-        <button
-          onClick={() => setConfigOpen((o) => !o)}
-          className="w-full flex items-center justify-between px-3 py-2.5
-                     bg-slate-800 border border-slate-700 rounded-xl
-                     text-slate-200 text-sm font-medium hover:border-slate-500 transition-colors"
-        >
-          <div className="flex items-center gap-2">
-            <SlidersHorizontal size={15} className="text-emerald-400" />
-            Session settings
-          </div>
-          {configOpen ? <ChevronUp size={16} className="text-slate-500" /> : <ChevronDown size={16} className="text-slate-500" />}
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setConfigOpen((o) => !o)}
+            className="flex-1 flex items-center justify-between px-3 py-2.5
+                       bg-slate-800 border border-slate-700 rounded-xl
+                       text-slate-200 text-sm font-medium hover:border-slate-500 transition-colors"
+          >
+            <div className="flex items-center gap-2">
+              <SlidersHorizontal size={15} className="text-emerald-400" />
+              Session settings
+            </div>
+            {configOpen ? <ChevronUp size={16} className="text-slate-500" /> : <ChevronDown size={16} className="text-slate-500" />}
+          </button>
+
+          {/* Reset config to defaults */}
+          <button
+            onClick={() => { setConfig(DEFAULT_CONFIG); setBuildWarning('') }}
+            title="Reset to defaults"
+            className="p-2.5 bg-slate-800 border border-slate-700 rounded-xl
+                       text-slate-500 hover:text-slate-200 hover:border-slate-500 transition-colors"
+          >
+            <RotateCcw size={15} />
+          </button>
+        </div>
 
         {configOpen && (
           <div className="mt-3 p-4 bg-slate-800/60 border border-slate-700 rounded-xl">
