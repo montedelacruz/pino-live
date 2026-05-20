@@ -1,9 +1,10 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { Trash2, Copy, Search, Save, Loader2, Music2 } from 'lucide-react'
+import { Trash2, Copy, Search, Save, Loader2, Music2, Eraser } from 'lucide-react'
 import { TopBar } from '../components/TopBar'
 import { LyricsSearchModal, type LyricsSearchResult } from '../components/LyricsSearchModal'
 import { useSongStore } from '../store/songStore'
+import { stripMarkup } from '../components/LyricsRenderer'
 import type { Song } from '../db/db'
 
 type DraftSong = Omit<Song, 'id' | 'createdAt' | 'updatedAt'>
@@ -51,6 +52,38 @@ export function SongEditorPage() {
   const [showLyricsSearch, setShowLyricsSearch] = useState(false)
   const [languageSelect, setLanguageSelect] = useState('')
   const createdIdRef = useRef<string | null>(null)
+  const lyricsRef   = useRef<HTMLTextAreaElement>(null)
+
+  // Wrap the current textarea selection with before/after markers
+  const applyFormat = useCallback((before: string, after: string) => {
+    const ta = lyricsRef.current
+    if (!ta) return
+    const start = ta.selectionStart
+    const end   = ta.selectionEnd
+    const selected = draft.lyrics.slice(start, end)
+    const newLyrics =
+      draft.lyrics.slice(0, start) + before + selected + after + draft.lyrics.slice(end)
+    setField('lyrics', newLyrics)
+    requestAnimationFrame(() => {
+      ta.focus()
+      ta.setSelectionRange(start + before.length, end + before.length)
+    })
+  }, [draft.lyrics])
+
+  // Strip all markup markers from the selected text
+  const clearFormat = useCallback(() => {
+    const ta = lyricsRef.current
+    if (!ta) return
+    const start = ta.selectionStart
+    const end   = ta.selectionEnd
+    const cleaned = stripMarkup(draft.lyrics.slice(start, end))
+    const newLyrics = draft.lyrics.slice(0, start) + cleaned + draft.lyrics.slice(end)
+    setField('lyrics', newLyrics)
+    requestAnimationFrame(() => {
+      ta.focus()
+      ta.setSelectionRange(start, start + cleaned.length)
+    })
+  }, [draft.lyrics])
 
   // Populate form when editing an existing song
   useEffect(() => {
@@ -318,8 +351,62 @@ export function SongEditorPage() {
         </button>
 
         {/* Lyrics */}
-        <Field label="Lyrics">
+        <Field
+          label="Lyrics"
+          action={
+            /* ── Formatting toolbar ── */
+            <div className="flex items-center gap-1">
+              {/* Bold */}
+              <button
+                type="button"
+                onMouseDown={(e) => { e.preventDefault(); applyFormat('**', '**') }}
+                className="px-2 py-1 text-xs font-bold text-slate-300 hover:text-white
+                           bg-slate-700 hover:bg-slate-600 rounded transition-colors"
+                title="Bold — **text**"
+              >B</button>
+
+              {/* Gold / chorus */}
+              <button
+                type="button"
+                onMouseDown={(e) => { e.preventDefault(); applyFormat('==', '==') }}
+                className="px-2 py-1 text-xs font-bold text-amber-400 hover:text-amber-300
+                           bg-slate-700 hover:bg-slate-600 rounded transition-colors"
+                title="Gold highlight — ==text=="
+              >●</button>
+
+              {/* Red / cue */}
+              <button
+                type="button"
+                onMouseDown={(e) => { e.preventDefault(); applyFormat('[r]', '[/r]') }}
+                className="px-2 py-1 text-xs font-bold text-rose-400 hover:text-rose-300
+                           bg-slate-700 hover:bg-slate-600 rounded transition-colors"
+                title="Red — [r]text[/r]"
+              >●</button>
+
+              {/* Blue / bridge */}
+              <button
+                type="button"
+                onMouseDown={(e) => { e.preventDefault(); applyFormat('[b]', '[/b]') }}
+                className="px-2 py-1 text-xs font-bold text-sky-400 hover:text-sky-300
+                           bg-slate-700 hover:bg-slate-600 rounded transition-colors"
+                title="Blue — [b]text[/b]"
+              >●</button>
+
+              {/* Clear formatting */}
+              <button
+                type="button"
+                onMouseDown={(e) => { e.preventDefault(); clearFormat() }}
+                className="px-2 py-1 text-slate-400 hover:text-slate-200
+                           bg-slate-700 hover:bg-slate-600 rounded transition-colors"
+                title="Remove formatting from selection"
+              >
+                <Eraser size={12} />
+              </button>
+            </div>
+          }
+        >
           <textarea
+            ref={lyricsRef}
             value={draft.lyrics}
             onChange={(e) => setField('lyrics', e.target.value)}
             placeholder="Paste or type lyrics here…"

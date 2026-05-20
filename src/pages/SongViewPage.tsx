@@ -2,6 +2,7 @@ import { useNavigate, useParams, useLocation } from 'react-router-dom'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Edit2, Type, AlignLeft, ChevronLeft, ChevronRight } from 'lucide-react'
 import { TopBar } from '../components/TopBar'
+import { LyricsRenderer } from '../components/LyricsRenderer'
 import { useSongStore } from '../store/songStore'
 import { useSettingsStore } from '../store/settingsStore'
 import { usePerformanceKeyboard } from '../hooks/useKeyboard'
@@ -165,7 +166,7 @@ export function SongViewPage() {
         className={`whitespace-pre-wrap text-slate-100 pt-1 ${fontMode === 'monospace' ? 'font-mono' : ''}`}
         style={{ fontSize: `${fontSize}px`, lineHeight }}
       >
-        {song.lyrics || <span className="text-slate-500 italic">No lyrics added yet.</span>}
+        <LyricsRenderer lyrics={song.lyrics} />
       </div>
       {song.notes && (
         <div className="mt-4 p-4 bg-slate-800/60 border border-slate-700 rounded-xl">

@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { X, ChevronLeft, ChevronRight, Type, AlignLeft } from 'lucide-react'
 import { useSetlistStore } from '../store/setlistStore'
 import { useSongStore } from '../store/songStore'
+import { LyricsRenderer } from '../components/LyricsRenderer'
 import { useSettingsStore } from '../store/settingsStore'
 import { useWakeLock } from '../hooks/useWakeLock'
 import { usePerformanceKeyboard } from '../hooks/useKeyboard'
@@ -288,9 +289,10 @@ export function PerformancePage() {
                       ${fontMode === 'monospace' ? 'font-mono' : ''}`}
           style={{ fontSize: `${fontSize}px`, lineHeight }}
         >
-          {song.lyrics || (
-            <span className="text-slate-600 italic">No lyrics.</span>
-          )}
+          <LyricsRenderer
+            lyrics={song.lyrics}
+            fallback={<span className="text-slate-600 italic">No lyrics.</span>}
+          />
         </div>
         {/* Bottom padding so last line is fully readable above the nav */}
         <div className="h-16" />
