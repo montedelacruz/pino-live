@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { X, ChevronLeft, ChevronRight, Type, AlignLeft } from 'lucide-react'
+import { X, ChevronLeft, ChevronRight, Type, AlignLeft, Edit2 } from 'lucide-react'
 import { useSetlistStore } from '../store/setlistStore'
 import { useSongStore } from '../store/songStore'
 import { LyricsRenderer } from '../components/LyricsRenderer'
@@ -281,9 +281,18 @@ export function PerformancePage() {
             Am
           </button>
 
+          {/* Edit song */}
+          <button
+            onClick={() => navigate(`/songs/${song.id}/edit`)}
+            className="p-2 text-slate-400 hover:text-slate-100 rounded-lg transition-colors"
+            title="Edit song"
+          >
+            <Edit2 size={18} />
+          </button>
+
           <button
             onClick={handleExit}
-            className="p-2 text-slate-400 hover:text-red-400 rounded-lg transition-colors ml-1"
+            className="p-2 text-slate-400 hover:text-red-400 rounded-lg transition-colors"
             title="Exit (Esc)"
           >
             <X size={20} />

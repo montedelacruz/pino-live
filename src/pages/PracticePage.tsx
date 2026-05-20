@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { X, ChevronLeft, ChevronRight, Shuffle, Type, AlignLeft } from 'lucide-react'
+import { X, ChevronLeft, ChevronRight, Shuffle, Type, AlignLeft, Edit2 } from 'lucide-react'
 import { useSongStore } from '../store/songStore'
 import { useRehearsalStore } from '../store/rehearsalStore'
 import { useSettingsStore } from '../store/settingsStore'
@@ -154,7 +154,12 @@ export function PracticePage() {
           </button>
           <button onClick={decreaseFontSize} className="p-2 text-slate-400 hover:text-slate-100 rounded-lg text-sm font-bold">A-</button>
           <button onClick={increaseFontSize} className="p-2 text-slate-400 hover:text-slate-100 rounded-lg font-bold">A+</button>
-          <button onClick={handleExit} className="p-2 text-slate-400 hover:text-red-400 rounded-lg transition-colors ml-1">
+          <button onClick={() => navigate(`/songs/${song.id}/edit`)}
+            className="p-2 text-slate-400 hover:text-slate-100 rounded-lg transition-colors"
+            title="Edit song">
+            <Edit2 size={18} />
+          </button>
+          <button onClick={handleExit} className="p-2 text-slate-400 hover:text-red-400 rounded-lg transition-colors">
             <X size={20} />
           </button>
         </div>
