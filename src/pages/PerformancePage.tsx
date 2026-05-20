@@ -20,9 +20,12 @@ export function PerformancePage() {
   const { songs: allSongs } = useSongStore()
   const {
     fontSize,
+    lineHeight,
     fontMode,
     increaseFontSize,
     decreaseFontSize,
+    increaseLineHeight,
+    decreaseLineHeight,
     toggleFontMode,
   } = useSettingsStore()
 
@@ -197,20 +200,54 @@ export function PerformancePage() {
           >
             {fontMode === 'monospace' ? <Type size={18} /> : <AlignLeft size={18} />}
           </button>
+
+          {/* Font size */}
           <button
             onClick={decreaseFontSize}
             className="p-2 text-slate-400 hover:text-slate-100 rounded-lg text-sm font-bold"
-            title="Smaller text"
+            title="Smaller text (,)"
           >
             A-
           </button>
           <button
             onClick={increaseFontSize}
             className="p-2 text-slate-400 hover:text-slate-100 rounded-lg font-bold"
-            title="Larger text"
+            title="Larger text (.)"
           >
             A+
           </button>
+
+          {/* Divider */}
+          <span className="w-px h-5 bg-slate-700 mx-1" />
+
+          {/* Line spacing */}
+          <button
+            onClick={decreaseLineHeight}
+            className="p-2 text-slate-400 hover:text-slate-100 rounded-lg"
+            title="Tighter line spacing"
+          >
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="currentColor">
+              <rect x="2" y="2" width="14" height="2" rx="1"/>
+              <rect x="2" y="8" width="14" height="2" rx="1"/>
+              <rect x="2" y="14" width="14" height="2" rx="1"/>
+              <path d="M15 5.5L16.5 4L15 2.5" stroke="currentColor" strokeWidth="1.2" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M15 12.5L16.5 11L15 9.5" stroke="currentColor" strokeWidth="1.2" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </button>
+          <button
+            onClick={increaseLineHeight}
+            className="p-2 text-slate-400 hover:text-slate-100 rounded-lg"
+            title="Looser line spacing"
+          >
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="currentColor">
+              <rect x="2" y="2" width="14" height="2" rx="1"/>
+              <rect x="2" y="9" width="14" height="2" rx="1"/>
+              <rect x="2" y="16" width="14" height="2" rx="1"/>
+              <path d="M15 6L16.5 7.5L15 9" stroke="currentColor" strokeWidth="1.2" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M15 13L16.5 11.5L15 10" stroke="currentColor" strokeWidth="1.2" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </button>
+
           <button
             onClick={handleExit}
             className="p-2 text-slate-400 hover:text-red-400 rounded-lg transition-colors ml-1"
@@ -228,9 +265,9 @@ export function PerformancePage() {
         style={{ scrollbarWidth: 'none' }}
       >
         <div
-          className={`whitespace-pre-wrap leading-relaxed text-slate-100 max-w-3xl mx-auto
+          className={`whitespace-pre-wrap text-slate-100 max-w-3xl mx-auto
                       ${fontMode === 'monospace' ? 'font-mono' : ''}`}
-          style={{ fontSize: `${fontSize}px` }}
+          style={{ fontSize: `${fontSize}px`, lineHeight }}
         >
           {song.lyrics || (
             <span className="text-slate-600 italic">No lyrics.</span>
