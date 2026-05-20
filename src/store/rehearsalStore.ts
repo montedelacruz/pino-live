@@ -47,6 +47,7 @@ interface RehearsalState {
   sessionId: string
 
   setConfig:    (partial: Partial<PracticeConfig>) => void
+  resetConfig:  () => void
   buildSession: (allSongs: Song[], allSetlists: Setlist[], entries: PracticeEntry[]) => void
   // Backward-compat helpers used by existing RehearsalPage / PracticePage
   shuffle:  (songs: Song[]) => void
@@ -197,8 +198,8 @@ export const useRehearsalStore = create<RehearsalState>()(
       songIds:   [],
       sessionId: uuidv4(),
 
-      setConfig: (partial) =>
-        set((s) => ({ config: { ...s.config, ...partial } })),
+      setConfig:   (partial) => set((s) => ({ config: { ...s.config, ...partial } })),
+      resetConfig: ()        => set({ config: { ...DEFAULT_CONFIG } }),
 
       buildSession: (allSongs, allSetlists, entries) => {
         const ids = buildPracticeSession(get().config, allSongs, allSetlists, entries)

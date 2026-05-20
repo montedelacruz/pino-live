@@ -5,7 +5,7 @@ import { TopBar } from '../components/TopBar'
 import { PracticeConfigPanel } from '../components/PracticeConfigPanel'
 import { useSongStore } from '../store/songStore'
 import { useSetlistStore } from '../store/setlistStore'
-import { useRehearsalStore, DEFAULT_CONFIG } from '../store/rehearsalStore'
+import { useRehearsalStore } from '../store/rehearsalStore'
 import { usePracticeHistoryStore } from '../store/practiceHistoryStore'
 import type { Song } from '../db/db'
 
@@ -19,7 +19,7 @@ export function RehearsalPage() {
   const navigate = useNavigate()
   const { songs: allSongs } = useSongStore()
   const { setlists }        = useSetlistStore()
-  const { config, songIds, setConfig, buildSession } = useRehearsalStore()
+  const { config, songIds, setConfig, resetConfig, buildSession } = useRehearsalStore()
   const { entries, hydrate, getStreakDays }           = usePracticeHistoryStore()
 
   const [configOpen,    setConfigOpen]    = useState(songIds.length === 0)
@@ -98,7 +98,7 @@ export function RehearsalPage() {
 
           {/* Reset config to defaults */}
           <button
-            onClick={() => { setConfig(DEFAULT_CONFIG); setBuildWarning('') }}
+            onClick={() => { resetConfig(); setBuildWarning('') }}
             title="Reset to defaults"
             className="p-2.5 bg-slate-800 border border-slate-700 rounded-xl
                        text-slate-500 hover:text-slate-200 hover:border-slate-500 transition-colors"
@@ -115,9 +115,17 @@ export function RehearsalPage() {
             />
 
             {buildWarning && (
-              <p className="mt-4 text-xs text-amber-400 bg-amber-900/30 border border-amber-700/40 rounded-lg px-3 py-2">
-                ⚠ {buildWarning}
-              </p>
+              <div className="mt-4 bg-amber-900/30 border border-amber-700/40 rounded-lg px-3 py-2.5 space-y-2">
+                <p className="text-xs text-amber-300">⚠ {buildWarning}</p>
+                {config.onlyNeedsWork && (
+                  <button
+                    onClick={() => { setConfig({ onlyNeedsWork: false }); setBuildWarning('') }}
+                    className="text-xs font-medium text-amber-200 underline underline-offset-2 hover:text-white transition-colors"
+                  >
+                    Turn off "Needs-work only" →
+                  </button>
+                )}
+              </div>
             )}
 
             <button
