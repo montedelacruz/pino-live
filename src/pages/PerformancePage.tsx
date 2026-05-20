@@ -8,8 +8,9 @@ import { useWakeLock } from '../hooks/useWakeLock'
 import { usePerformanceKeyboard } from '../hooks/useKeyboard'
 import type { Song } from '../db/db'
 
-const SCROLL_STEP = 120       // px per arrow/scroll action
-const JUMP_SIZE   = 10        // songs per double-click
+const SCROLL_STEP     = 120   // px per keyboard arrow action
+const PEDAL_OVERLAP   = 0.75  // pedal scrolls 75 % of visible height (25 % overlap)
+const JUMP_SIZE       = 10    // songs per double-click
 const AT_EDGE_THRESHOLD = 20  // px — how close to top/bottom counts as "at edge"
 
 export function PerformancePage() {
@@ -87,7 +88,7 @@ export function PerformancePage() {
 
   /**
    * Context-aware right pedal (single press):
-   * - If lyrics are scrollable and NOT at the bottom → scroll down
+   * - If lyrics are scrollable and NOT at the bottom → scroll 75 % of visible height
    * - If at the bottom (or song fits on screen) → go to next song
    */
   const handleRightSingle = useCallback(() => {
@@ -95,7 +96,7 @@ export function PerformancePage() {
     if (el) {
       const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight <= AT_EDGE_THRESHOLD
       if (!atBottom) {
-        el.scrollBy({ top: SCROLL_STEP, behavior: 'smooth' })
+        el.scrollBy({ top: Math.round(el.clientHeight * PEDAL_OVERLAP), behavior: 'smooth' })
         resetControlsTimer()
         return
       }
@@ -105,13 +106,13 @@ export function PerformancePage() {
 
   /**
    * Context-aware left pedal (single press):
-   * - If lyrics are scrollable and NOT at the top → scroll up
+   * - If lyrics are scrollable and NOT at the top → scroll up 75 % of visible height
    * - If at the top → go to previous song
    */
   const handleLeftSingle = useCallback(() => {
     const el = lyricsRef.current
     if (el && el.scrollTop > AT_EDGE_THRESHOLD) {
-      el.scrollBy({ top: -SCROLL_STEP, behavior: 'smooth' })
+      el.scrollBy({ top: -Math.round(el.clientHeight * PEDAL_OVERLAP), behavior: 'smooth' })
       resetControlsTimer()
       return
     }
