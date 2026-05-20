@@ -7,6 +7,7 @@ import { LyricsRenderer } from '../components/LyricsRenderer'
 import { useSettingsStore } from '../store/settingsStore'
 import { useWakeLock } from '../hooks/useWakeLock'
 import { usePerformanceKeyboard } from '../hooks/useKeyboard'
+import { useSwipe } from '../hooks/useSwipe'
 import type { Song } from '../db/db'
 
 const SCROLL_STEP     = 120   // px per keyboard arrow action
@@ -147,6 +148,12 @@ export function PerformancePage() {
     }
   }, [])
 
+  // Swipe left → next song, swipe right → prev song
+  const swipeHandlers = useSwipe({
+    onSwipeLeft:  () => goTo(currentIndex + 1),
+    onSwipeRight: () => goTo(currentIndex - 1),
+  })
+
   // Keyboard / foot pedal handlers
   usePerformanceKeyboard({
     // Pedal — double-click aware
@@ -186,7 +193,8 @@ export function PerformancePage() {
     <div
       className="fixed inset-0 bg-slate-950 flex flex-col select-none"
       onMouseMove={resetControlsTimer}
-      onTouchStart={resetControlsTimer}
+      onTouchStart={(e) => { resetControlsTimer(); swipeHandlers.onTouchStart(e) }}
+      onTouchEnd={swipeHandlers.onTouchEnd}
       onClick={resetControlsTimer}
     >
       {/* ── Top bar (auto-hides) ── */}

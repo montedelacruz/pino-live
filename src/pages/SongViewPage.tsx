@@ -7,6 +7,7 @@ import { AddToSetlistModal } from '../components/AddToSetlistModal'
 import { useSongStore } from '../store/songStore'
 import { useSettingsStore } from '../store/settingsStore'
 import { usePerformanceKeyboard } from '../hooks/useKeyboard'
+import { useSwipe } from '../hooks/useSwipe'
 
 const AT_EDGE_THRESHOLD = 20   // px
 const PEDAL_OVERLAP     = 0.75
@@ -107,6 +108,12 @@ export function SongViewPage() {
     onToggleFullscreen: () => {},
   })
 
+  // Swipe left → next song, swipe right → prev song (browse mode only)
+  const swipeHandlers = useSwipe({
+    onSwipeLeft:  () => goTo(browseIndex + 1),
+    onSwipeRight: () => goTo(browseIndex - 1),
+  })
+
   // ── Guard ─────────────────────────────────────────────────────────────────
   if (!song) {
     return (
@@ -202,7 +209,8 @@ export function SongViewPage() {
   // ── Browse mode: fixed full-screen layout (reliable ref-based scrolling) ──
   if (browseIds) {
     return (
-      <div className="fixed inset-0 z-50 bg-slate-900 flex flex-col">
+      <div className="fixed inset-0 z-50 bg-slate-900 flex flex-col"
+           {...swipeHandlers}>
         {setlistPickerModal}
         <TopBar title={song.title} showBack right={topBarRight} />
 
