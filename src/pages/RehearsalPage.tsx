@@ -22,7 +22,8 @@ export function RehearsalPage() {
   const { config, songIds, setConfig, buildSession } = useRehearsalStore()
   const { entries, hydrate, getStreakDays }           = usePracticeHistoryStore()
 
-  const [configOpen, setConfigOpen] = useState(songIds.length === 0)
+  const [configOpen,    setConfigOpen]    = useState(songIds.length === 0)
+  const [buildWarning,  setBuildWarning]  = useState('')
 
   // Hydrate practice history once
   useEffect(() => { hydrate() }, [hydrate])
@@ -32,8 +33,15 @@ export function RehearsalPage() {
     .filter(Boolean) as Song[]
 
   const handleBuild = () => {
+    setBuildWarning('')
     buildSession(allSongs, setlists, entries)
-    setConfigOpen(false)
+    // Zustand set() is synchronous — read the fresh state directly
+    const built = useRehearsalStore.getState().songIds
+    if (built.length === 0) {
+      setBuildWarning('No songs matched these settings. Try loosening the filters (e.g. turn off "Needs-work only").')
+    } else {
+      setConfigOpen(false)
+    }
   }
 
   const handleStartPractice = () => {
@@ -89,11 +97,20 @@ export function RehearsalPage() {
 
         {configOpen && (
           <div className="mt-3 p-4 bg-slate-800/60 border border-slate-700 rounded-xl">
-            <PracticeConfigPanel config={config} onChange={setConfig} />
+            <PracticeConfigPanel
+              config={config}
+              onChange={(p) => { setBuildWarning(''); setConfig(p) }}
+            />
+
+            {buildWarning && (
+              <p className="mt-4 text-xs text-amber-400 bg-amber-900/30 border border-amber-700/40 rounded-lg px-3 py-2">
+                ⚠ {buildWarning}
+              </p>
+            )}
 
             <button
               onClick={handleBuild}
-              className="mt-5 w-full py-2.5 bg-emerald-600 hover:bg-emerald-500
+              className="mt-3 w-full py-2.5 bg-emerald-600 hover:bg-emerald-500
                          text-white text-sm font-semibold rounded-xl transition-colors"
             >
               Build session
