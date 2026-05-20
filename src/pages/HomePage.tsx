@@ -1,14 +1,36 @@
 import { useNavigate } from 'react-router-dom'
-import { Music2, ListMusic, Shuffle } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { Music2, ListMusic, Shuffle, Download } from 'lucide-react'
 import { useSongStore } from '../store/songStore'
 import { useSetlistStore } from '../store/setlistStore'
 import { useRehearsalStore } from '../store/rehearsalStore'
+
+interface BeforeInstallPromptEvent extends Event {
+  prompt(): Promise<void>
+  userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>
+}
 
 export function HomePage() {
   const navigate = useNavigate()
   const { songs } = useSongStore()
   const { setlists } = useSetlistStore()
   const startRehearsal = useRehearsalStore((s) => s.setSongs)
+  const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null)
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      e.preventDefault()
+      setInstallPrompt(e as BeforeInstallPromptEvent)
+    }
+    window.addEventListener('beforeinstallprompt', handler)
+    return () => window.removeEventListener('beforeinstallprompt', handler)
+  }, [])
+
+  const handleInstall = async () => {
+    if (!installPrompt) return
+    await installPrompt.prompt()
+    setInstallPrompt(null)
+  }
 
   const handleRehearsal = () => {
     if (songs.length === 0) return
@@ -92,6 +114,17 @@ export function HomePage() {
             onClick={handleRehearsal}
             disabled={songs.length === 0}
           />
+
+          {installPrompt && (
+            <ActionCard
+              icon={<Download size={26} className="text-amber-300" />}
+              iconBg="bg-amber-600/40"
+              border="border-amber-500/30"
+              title="Install App"
+              description="Add Pino Live! to your home screen"
+              onClick={handleInstall}
+            />
+          )}
 
         </div>
       </div>
