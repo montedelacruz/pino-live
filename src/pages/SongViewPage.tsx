@@ -1,5 +1,5 @@
 import { useNavigate, useParams, useLocation } from 'react-router-dom'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Edit2, Type, AlignLeft, ChevronLeft, ChevronRight } from 'lucide-react'
 import { TopBar } from '../components/TopBar'
 import { useSongStore } from '../store/songStore'
