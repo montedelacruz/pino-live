@@ -55,7 +55,7 @@ export function SetlistsPage() {
     return (
       <button
         onClick={() => navigate(`/setlists/${sl.id}/edit`)}
-        className={`w-full flex flex-col gap-2 p-3 rounded-xl text-left transition-colors group
+        className={`w-full flex flex-col gap-1.5 p-2 rounded-xl text-left transition-colors group
                     border
                     ${isAuto
                       ? 'bg-violet-950/50 border-violet-700/40 hover:bg-violet-900/50 hover:border-violet-600/60'
@@ -63,59 +63,50 @@ export function SetlistsPage() {
       >
         {/* Top row: icon + actions */}
         <div className="flex items-start justify-between gap-1">
-          <div className={`flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center
+          <div className={`flex-shrink-0 w-6 h-6 rounded-md flex items-center justify-center
                            ${isAuto ? 'bg-violet-800/50' : 'bg-emerald-800/50'}`}>
             {isAuto
-              ? <Sparkles size={15} className="text-violet-300" />
-              : <ListMusic size={15} className="text-emerald-300" />}
+              ? <Sparkles size={12} className="text-violet-300" />
+              : <ListMusic size={12} className="text-emerald-300" />}
           </div>
 
-          {/* Action buttons */}
-          <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+          {/* Action buttons — hover only */}
+          <div className="flex items-center gap-0 opacity-0 group-hover:opacity-100 transition-opacity"
                onClick={(e) => e.stopPropagation()}>
-            <button
-              onClick={(e) => handleDuplicate(sl.id, e)}
-              className="p-1.5 text-slate-500 hover:text-slate-200 hover:bg-slate-700/60 rounded-lg transition-colors"
-              title="Duplicate"
-            >
-              <Copy size={13} />
+            <button onClick={(e) => handleDuplicate(sl.id, e)}
+              className="p-1 text-slate-500 hover:text-slate-200 rounded transition-colors" title="Duplicate">
+              <Copy size={11} />
             </button>
-            <button
-              onClick={(e) => handleDelete(sl.id, sl.name, e)}
-              className="p-1.5 text-slate-500 hover:text-red-400 hover:bg-slate-700/60 rounded-lg transition-colors"
-              title="Delete"
-            >
-              <Trash2 size={13} />
+            <button onClick={(e) => handleDelete(sl.id, sl.name, e)}
+              className="p-1 text-slate-500 hover:text-red-400 rounded transition-colors" title="Delete">
+              <Trash2 size={11} />
             </button>
-            <ChevronRight size={14} className="text-slate-600 ml-0.5" />
           </div>
         </div>
 
         {/* Name */}
-        <p className={`font-semibold text-sm leading-tight line-clamp-2
+        <p className={`font-semibold text-xs leading-snug line-clamp-2
                        ${isAuto ? 'text-violet-100' : 'text-emerald-100'}`}>
           {sl.name}
         </p>
 
         {/* Meta */}
         <div className="flex flex-col gap-0.5">
-          <span className="text-xs text-slate-400">
-            {sl.songIds.length} song{sl.songIds.length !== 1 ? 's' : ''}
-            {total > 0 && (
-              <span className="text-slate-500"> · {formatDuration(total)}</span>
-            )}
+          <span className="text-[10px] text-slate-400 leading-tight">
+            {sl.songIds.length} songs
+            {total > 0 && <span className="text-slate-500"> · {formatDuration(total)}</span>}
           </span>
-          {sl.date && (
-            <span className="flex items-center gap-1 text-xs text-slate-500">
-              <CalendarDays size={10} />
-              {new Date(sl.date + 'T12:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+          {sl.venue && (
+            <span className="flex items-center gap-0.5 text-[10px] truncate leading-tight"
+                  style={{ color: isAuto ? '#a78bfa' : '#6ee7b7' }}>
+              <MapPin size={9} className="flex-shrink-0" />
+              <span className="truncate">{sl.venue}</span>
             </span>
           )}
-          {sl.venue && (
-            <span className="flex items-center gap-1 text-xs truncate"
-                  style={{ color: isAuto ? '#a78bfa' : '#6ee7b7' }}>
-              <MapPin size={10} className="flex-shrink-0" />
-              <span className="truncate">{sl.venue}</span>
+          {sl.date && (
+            <span className="flex items-center gap-0.5 text-[10px] text-slate-500 leading-tight">
+              <CalendarDays size={9} />
+              {new Date(sl.date + 'T12:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
             </span>
           )}
         </div>
@@ -222,7 +213,7 @@ export function SetlistsPage() {
               <ListMusic size={11} />
               Manual
             </h2>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-3 gap-2">
               {manual.map((sl) => <SetlistCard key={sl.id} sl={sl} />)}
             </div>
           </section>
@@ -235,7 +226,7 @@ export function SetlistsPage() {
               <Sparkles size={11} />
               Smart
             </h2>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-3 gap-2">
               {auto.map((sl) => <SetlistCard key={sl.id} sl={sl} />)}
             </div>
           </section>
