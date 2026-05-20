@@ -179,7 +179,7 @@ export function SongViewPage() {
   // ── Browse mode: fixed full-screen layout (reliable ref-based scrolling) ──
   if (browseIds) {
     return (
-      <div className="fixed inset-0 z-20 bg-slate-900 flex flex-col">
+      <div className="fixed inset-0 z-50 bg-slate-900 flex flex-col">
         <TopBar title={song.title} showBack right={topBarRight} />
 
         {/* Scrollable lyrics area — ref-based, no window dependency */}
