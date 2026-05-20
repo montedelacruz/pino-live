@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, ListMusic, ChevronRight, Trash2, Copy, Clock } from 'lucide-react'
+import { Plus, ListMusic, ChevronRight, Trash2, Copy, Clock, MapPin, CalendarDays } from 'lucide-react'
 import { TopBar } from '../components/TopBar'
 import { useSetlistStore } from '../store/setlistStore'
 import { useSongStore } from '../store/songStore'
@@ -112,7 +112,7 @@ export function SetlistsPage() {
 
               <div className="flex-1 min-w-0">
                 <p className="font-semibold text-slate-100 truncate">{sl.name}</p>
-                <div className="flex items-center gap-3 mt-0.5">
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-0.5">
                   <span className="text-sm text-slate-400">
                     {sl.songIds.length} song{sl.songIds.length !== 1 ? 's' : ''}
                   </span>
@@ -120,6 +120,18 @@ export function SetlistsPage() {
                     <span className="flex items-center gap-1 text-sm text-slate-500">
                       <Clock size={13} />
                       {formatDuration(total)}
+                    </span>
+                  )}
+                  {sl.date && (
+                    <span className="flex items-center gap-1 text-sm text-slate-500">
+                      <CalendarDays size={13} />
+                      {new Date(sl.date + 'T12:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                    </span>
+                  )}
+                  {sl.venue && (
+                    <span className="flex items-center gap-1 text-sm text-violet-400/80 truncate max-w-[160px]">
+                      <MapPin size={12} />
+                      {sl.venue}
                     </span>
                   )}
                 </div>

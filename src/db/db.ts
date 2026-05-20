@@ -19,6 +19,12 @@ export interface Setlist {
   id: string
   name: string
   songIds: string[]
+  // Event details (all optional)
+  venue?: string
+  date?: string          // ISO date string "YYYY-MM-DD"
+  contactPerson?: string
+  contactPhone?: string
+  notes?: string
   createdAt: number
   updatedAt: number
 }

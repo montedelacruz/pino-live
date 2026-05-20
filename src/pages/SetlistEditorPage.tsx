@@ -25,6 +25,13 @@ import {
   Play,
   Clock,
   Music2,
+  MapPin,
+  CalendarDays,
+  User,
+  Phone,
+  FileText,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react'
 import { TopBar } from '../components/TopBar'
 import { useSetlistStore } from '../store/setlistStore'
@@ -101,6 +108,42 @@ function SortableSongRow({
   )
 }
 
+// ─── Small labelled input ─────────────────────────────────────────────────────
+
+function FieldInput({
+  icon: Icon,
+  label,
+  value,
+  onChange,
+  placeholder,
+  type = 'text',
+}: {
+  icon: React.ElementType
+  label: string
+  value: string
+  onChange: (v: string) => void
+  placeholder?: string
+  type?: string
+}) {
+  return (
+    <div className="space-y-1">
+      <label className="flex items-center gap-1.5 text-xs text-slate-400 font-medium uppercase tracking-wide">
+        <Icon size={12} />
+        {label}
+      </label>
+      <input
+        type={type}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5
+                   text-slate-100 placeholder-slate-500 text-sm
+                   focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+      />
+    </div>
+  )
+}
+
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export function SetlistEditorPage() {
@@ -111,10 +154,22 @@ export function SetlistEditorPage() {
 
   const setlist = setlists.find((sl) => sl.id === id)
 
-  const [name, setName] = useState('')
+  // Core fields
+  const [name, setName]       = useState('')
   const [songIds, setSongIds] = useState<string[]>([])
-  const [searchQuery, setSearchQuery] = useState('')
-  const [showSearch, setShowSearch] = useState(false)
+
+  // Event detail fields
+  const [venue,         setVenue]         = useState('')
+  const [date,          setDate]          = useState('')
+  const [contactPerson, setContactPerson] = useState('')
+  const [contactPhone,  setContactPhone]  = useState('')
+  const [notes,         setNotes]         = useState('')
+
+  // UI state
+  const [searchQuery,  setSearchQuery]  = useState('')
+  const [showSearch,   setShowSearch]   = useState(false)
+  const [showDetails,  setShowDetails]  = useState(false)
+
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Hydrate local state from store
@@ -122,33 +177,68 @@ export function SetlistEditorPage() {
     if (setlist) {
       setName(setlist.name)
       setSongIds(setlist.songIds)
+      setVenue(setlist.venue ?? '')
+      setDate(setlist.date ?? '')
+      setContactPerson(setlist.contactPerson ?? '')
+      setContactPhone(setlist.contactPhone ?? '')
+      setNotes(setlist.notes ?? '')
+
+      // Auto-expand details if any are filled in
+      const hasDetails = !!(setlist.venue || setlist.date || setlist.contactPerson || setlist.contactPhone || setlist.notes)
+      setShowDetails(hasDetails)
     }
   }, [setlist?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const scheduleSave = useCallback(
-    (nextName: string, nextIds: string[]) => {
+    (fields: {
+      nextName: string
+      nextIds: string[]
+      nextVenue: string
+      nextDate: string
+      nextContactPerson: string
+      nextContactPhone: string
+      nextNotes: string
+    }) => {
       if (saveTimer.current) clearTimeout(saveTimer.current)
       saveTimer.current = setTimeout(() => {
-        if (id) updateSetlist(id, { name: nextName, songIds: nextIds })
+        if (!id) return
+        updateSetlist(id, {
+          name:          fields.nextName,
+          songIds:       fields.nextIds,
+          venue:         fields.nextVenue         || undefined,
+          date:          fields.nextDate          || undefined,
+          contactPerson: fields.nextContactPerson || undefined,
+          contactPhone:  fields.nextContactPhone  || undefined,
+          notes:         fields.nextNotes         || undefined,
+        })
       }, 400)
     },
     [id, updateSetlist]
   )
 
-  const setNameAndSave = (v: string) => {
-    setName(v)
-    scheduleSave(v, songIds)
-  }
+  // Helper so each field just passes its new value; the rest come from current state
+  const saveAll = useCallback(
+    (overrides: Partial<{
+      name: string; songIds: string[]; venue: string; date: string
+      contactPerson: string; contactPhone: string; notes: string
+    }>) => {
+      scheduleSave({
+        nextName:          overrides.name          ?? name,
+        nextIds:           overrides.songIds       ?? songIds,
+        nextVenue:         overrides.venue         ?? venue,
+        nextDate:          overrides.date          ?? date,
+        nextContactPerson: overrides.contactPerson ?? contactPerson,
+        nextContactPhone:  overrides.contactPhone  ?? contactPhone,
+        nextNotes:         overrides.notes         ?? notes,
+      })
+    },
+    [scheduleSave, name, songIds, venue, date, contactPerson, contactPhone, notes]
+  )
 
-  const setSongIdsAndSave = (ids: string[]) => {
-    setSongIds(ids)
-    scheduleSave(name, ids)
-  }
-
-  // DnD sensors — support pointer, touch, and keyboard
+  // DnD sensors
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
-    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 8 } }),
+    useSensor(TouchSensor,   { activationConstraint: { delay: 200, tolerance: 8 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   )
 
@@ -157,24 +247,30 @@ export function SetlistEditorPage() {
     if (!over || active.id === over.id) return
     const oldIndex = songIds.indexOf(active.id as string)
     const newIndex = songIds.indexOf(over.id as string)
-    setSongIdsAndSave(arrayMove(songIds, oldIndex, newIndex))
+    const next = arrayMove(songIds, oldIndex, newIndex)
+    setSongIds(next)
+    saveAll({ songIds: next })
   }
 
   const addSong = (songId: string) => {
     if (songIds.includes(songId)) return
-    setSongIdsAndSave([...songIds, songId])
+    const next = [...songIds, songId]
+    setSongIds(next)
+    saveAll({ songIds: next })
   }
 
   const removeSong = (songId: string) => {
-    setSongIdsAndSave(songIds.filter((id) => id !== songId))
+    const next = songIds.filter((i) => i !== songId)
+    setSongIds(next)
+    saveAll({ songIds: next })
   }
 
-  // Songs currently in setlist, in order
+  // Songs in setlist (ordered)
   const setlistSongs = songIds
     .map((sid) => allSongs.find((s) => s.id === sid))
     .filter(Boolean) as Song[]
 
-  // Songs available to add (not already in setlist)
+  // Songs available to add
   const searchResults = allSongs.filter((s) => {
     if (songIds.includes(s.id)) return false
     if (!searchQuery.trim()) return true
@@ -187,6 +283,8 @@ export function SetlistEditorPage() {
   })
 
   const total = totalDuration(setlistSongs.map((s) => s.durationSeconds))
+
+  const hasEventDetails = !!(venue || date || contactPerson || contactPhone || notes)
 
   if (!setlist && id) {
     return (
@@ -220,17 +318,88 @@ export function SetlistEditorPage() {
 
       <div className="px-4 pt-4 space-y-5 max-w-2xl w-full mx-auto">
 
-        {/* Setlist name */}
+        {/* ── Setlist name ── */}
         <input
           value={name}
-          onChange={(e) => setNameAndSave(e.target.value)}
+          onChange={(e) => { setName(e.target.value); saveAll({ name: e.target.value }) }}
           placeholder="Setlist name"
           className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3
                      text-slate-100 text-lg font-semibold placeholder-slate-500
                      focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent"
         />
 
-        {/* Stats bar */}
+        {/* ── Event details collapsible ── */}
+        <div className="bg-slate-800/60 border border-slate-700 rounded-xl overflow-hidden">
+          <button
+            onClick={() => setShowDetails((v) => !v)}
+            className="w-full flex items-center justify-between px-4 py-3
+                       text-sm font-medium text-slate-300 hover:text-slate-100
+                       hover:bg-slate-700/40 transition-colors"
+          >
+            <span className="flex items-center gap-2">
+              <CalendarDays size={15} className={hasEventDetails ? 'text-violet-400' : 'text-slate-500'} />
+              Event Details
+              {hasEventDetails && (
+                <span className="text-xs px-1.5 py-0.5 bg-violet-700/40 text-violet-300 rounded-full">
+                  filled
+                </span>
+              )}
+            </span>
+            {showDetails ? <ChevronUp size={16} className="text-slate-500" /> : <ChevronDown size={16} className="text-slate-500" />}
+          </button>
+
+          {showDetails && (
+            <div className="px-4 pb-4 space-y-3 border-t border-slate-700/60">
+              <div className="pt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <FieldInput
+                  icon={CalendarDays}
+                  label="Date"
+                  type="date"
+                  value={date}
+                  onChange={(v) => { setDate(v); saveAll({ date: v }) }}
+                />
+                <FieldInput
+                  icon={MapPin}
+                  label="Venue"
+                  value={venue}
+                  onChange={(v) => { setVenue(v); saveAll({ venue: v }) }}
+                  placeholder="Club, church, event name…"
+                />
+                <FieldInput
+                  icon={User}
+                  label="Contact Person"
+                  value={contactPerson}
+                  onChange={(v) => { setContactPerson(v); saveAll({ contactPerson: v }) }}
+                  placeholder="Booking agent, coordinator…"
+                />
+                <FieldInput
+                  icon={Phone}
+                  label="Contact Info"
+                  value={contactPhone}
+                  onChange={(v) => { setContactPhone(v); saveAll({ contactPhone: v }) }}
+                  placeholder="Phone, email, or handle…"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="flex items-center gap-1.5 text-xs text-slate-400 font-medium uppercase tracking-wide">
+                  <FileText size={12} />
+                  Notes
+                </label>
+                <textarea
+                  value={notes}
+                  onChange={(e) => { setNotes(e.target.value); saveAll({ notes: e.target.value }) }}
+                  placeholder="Load-in time, dress code, set length, payment details…"
+                  rows={3}
+                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5
+                             text-slate-100 placeholder-slate-500 text-sm resize-none
+                             focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+                />
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* ── Stats bar ── */}
         {setlistSongs.length > 0 && (
           <div className="flex items-center gap-4 text-sm text-slate-400">
             <span className="flex items-center gap-1.5">
@@ -246,7 +415,7 @@ export function SetlistEditorPage() {
           </div>
         )}
 
-        {/* Song list */}
+        {/* ── Song list ── */}
         {setlistSongs.length > 0 ? (
           <DndContext
             sensors={sensors}
@@ -273,7 +442,7 @@ export function SetlistEditorPage() {
           </div>
         )}
 
-        {/* Add songs section */}
+        {/* ── Add songs ── */}
         <div className="space-y-3">
           <button
             onClick={() => setShowSearch((v) => !v)}
