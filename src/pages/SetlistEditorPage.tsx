@@ -33,12 +33,15 @@ import {
   ChevronDown,
   ChevronUp,
   ListPlus,
+  Sparkles,
+  RefreshCw,
 } from 'lucide-react'
 import { TopBar } from '../components/TopBar'
 import { useSetlistStore } from '../store/setlistStore'
 import { useSongStore } from '../store/songStore'
-import type { Song } from '../db/db'
+import type { Song, AutoFilters } from '../db/db'
 import { formatDuration, totalDuration } from '../utils/formatDuration'
+import { computeAutoSongIds, availableDecades, decadeLabel } from '../utils/autoSetlist'
 
 // ─── Sortable song row ────────────────────────────────────────────────────────
 
@@ -145,6 +148,133 @@ function FieldInput({
   )
 }
 
+// ─── Auto filters panel ───────────────────────────────────────────────────────
+
+function Chip({
+  label, active, onClick,
+}: { label: string; active: boolean; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-colors
+                  ${active
+                    ? 'bg-violet-700/60 border-violet-500 text-violet-200'
+                    : 'bg-slate-800 border-slate-700 text-slate-400 hover:border-slate-500 hover:text-slate-200'}`}
+    >
+      {label}
+    </button>
+  )
+}
+
+function AutoFiltersPanel({
+  filters,
+  onChange,
+  allSongs,
+}: {
+  filters: AutoFilters
+  onChange: (f: AutoFilters) => void
+  allSongs: Song[]
+}) {
+  const genres    = useMemo(() => [...new Set(allSongs.map((s) => s.genre).filter(Boolean))].sort(), [allSongs])
+  const languages = useMemo(() => [...new Set(allSongs.map((s) => s.language).filter(Boolean))].sort(), [allSongs])
+  const decades   = useMemo(() => availableDecades(allSongs), [allSongs])
+  const allTags   = useMemo(() => [...new Set(allSongs.flatMap((s) => s.tags))].sort(), [allSongs])
+
+  const toggle = <K extends 'genres' | 'languages' | 'decades' | 'tags'>(
+    key: K, value: K extends 'decades' ? number : string
+  ) => {
+    const current = (filters[key] ?? []) as (string | number)[]
+    const next = current.includes(value as never)
+      ? current.filter((v) => v !== value)
+      : [...current, value]
+    onChange({ ...filters, [key]: next.length ? next : undefined })
+  }
+
+  const setSort = (sort: AutoFilters['sort']) => onChange({ ...filters, sort })
+
+  const SectionLabel = ({ children }: { children: React.ReactNode }) => (
+    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">{children}</p>
+  )
+
+  return (
+    <div className="bg-slate-800/60 border border-violet-700/40 rounded-xl p-4 space-y-4">
+      <div className="flex items-center gap-2">
+        <Sparkles size={14} className="text-violet-400" />
+        <span className="text-sm font-semibold text-violet-300">Smart Filters</span>
+        <span className="text-xs text-slate-500 ml-auto">Songs matching ALL active filters</span>
+      </div>
+
+      {/* Genre */}
+      {genres.length > 0 && (
+        <div>
+          <SectionLabel>Genre</SectionLabel>
+          <div className="flex flex-wrap gap-1.5">
+            {genres.map((g) => (
+              <Chip key={g} label={g} active={filters.genres?.includes(g) ?? false}
+                onClick={() => toggle('genres', g)} />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Language */}
+      {languages.length > 0 && (
+        <div>
+          <SectionLabel>Language</SectionLabel>
+          <div className="flex flex-wrap gap-1.5">
+            {languages.map((l) => (
+              <Chip key={l} label={l} active={filters.languages?.includes(l) ?? false}
+                onClick={() => toggle('languages', l)} />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Decade */}
+      {decades.length > 0 && (
+        <div>
+          <SectionLabel>Decade</SectionLabel>
+          <div className="flex flex-wrap gap-1.5">
+            {decades.map((d) => (
+              <Chip key={d} label={decadeLabel(d)} active={filters.decades?.includes(d) ?? false}
+                onClick={() => toggle('decades', d)} />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Tags */}
+      {allTags.length > 0 && (
+        <div>
+          <SectionLabel>Tags <span className="normal-case font-normal">(match any)</span></SectionLabel>
+          <div className="flex flex-wrap gap-1.5">
+            {allTags.map((t) => (
+              <Chip key={t} label={t} active={filters.tags?.includes(t) ?? false}
+                onClick={() => toggle('tags', t)} />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Sort */}
+      <div>
+        <SectionLabel>Sort order</SectionLabel>
+        <div className="flex flex-wrap gap-1.5">
+          {(['titleAZ', 'artist', 'yearAsc', 'yearDesc'] as AutoFilters['sort'][]).map((s) => {
+            const labels: Record<string, string> = {
+              titleAZ: 'Title A→Z', artist: 'Artist', yearAsc: 'Year ↑', yearDesc: 'Year ↓',
+            }
+            return (
+              <Chip key={s} label={labels[s!]} active={(filters.sort ?? 'titleAZ') === s}
+                onClick={() => setSort(s)} />
+            )
+          })}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export function SetlistEditorPage() {
@@ -165,6 +295,10 @@ export function SetlistEditorPage() {
   const [contactPerson, setContactPerson] = useState('')
   const [contactPhone,  setContactPhone]  = useState('')
   const [notes,         setNotes]         = useState('')
+
+  // Auto-setlist filters
+  const [autoFilters, setAutoFilters] = useState<AutoFilters>({})
+  const isAuto = setlist?.type === 'auto'
 
   // UI state
   const [showDetails,  setShowDetails]  = useState(false)
@@ -196,6 +330,7 @@ export function SetlistEditorPage() {
       setContactPerson(setlist.contactPerson ?? '')
       setContactPhone(setlist.contactPhone ?? '')
       setNotes(setlist.notes ?? '')
+      setAutoFilters(setlist.autoFilters ?? {})
 
       // Auto-expand details if any are filled in
       const hasDetails = !!(setlist.venue || setlist.date || setlist.contactPerson || setlist.contactPhone || setlist.notes)
@@ -205,13 +340,9 @@ export function SetlistEditorPage() {
 
   const scheduleSave = useCallback(
     (fields: {
-      nextName: string
-      nextIds: string[]
-      nextVenue: string
-      nextDate: string
-      nextContactPerson: string
-      nextContactPhone: string
-      nextNotes: string
+      nextName: string; nextIds: string[]; nextVenue: string; nextDate: string
+      nextContactPerson: string; nextContactPhone: string; nextNotes: string
+      nextAutoFilters: AutoFilters
     }) => {
       if (saveTimer.current) clearTimeout(saveTimer.current)
       saveTimer.current = setTimeout(() => {
@@ -224,17 +355,18 @@ export function SetlistEditorPage() {
           contactPerson: fields.nextContactPerson || undefined,
           contactPhone:  fields.nextContactPhone  || undefined,
           notes:         fields.nextNotes         || undefined,
+          autoFilters:   fields.nextAutoFilters,
         })
       }, 400)
     },
     [id, updateSetlist]
   )
 
-  // Helper so each field just passes its new value; the rest come from current state
   const saveAll = useCallback(
     (overrides: Partial<{
       name: string; songIds: string[]; venue: string; date: string
       contactPerson: string; contactPhone: string; notes: string
+      autoFilters: AutoFilters
     }>) => {
       scheduleSave({
         nextName:          overrides.name          ?? name,
@@ -244,10 +376,19 @@ export function SetlistEditorPage() {
         nextContactPerson: overrides.contactPerson ?? contactPerson,
         nextContactPhone:  overrides.contactPhone  ?? contactPhone,
         nextNotes:         overrides.notes         ?? notes,
+        nextAutoFilters:   overrides.autoFilters   ?? autoFilters,
       })
     },
-    [scheduleSave, name, songIds, venue, date, contactPerson, contactPhone, notes]
+    [scheduleSave, name, songIds, venue, date, contactPerson, contactPhone, notes, autoFilters]
   )
+
+  // Handle auto-filter changes: recompute songIds and save
+  const handleFiltersChange = useCallback((newFilters: AutoFilters) => {
+    setAutoFilters(newFilters)
+    const newIds = computeAutoSongIds(allSongs, newFilters)
+    setSongIds(newIds)
+    saveAll({ autoFilters: newFilters, songIds: newIds })
+  }, [allSongs, saveAll])
 
   // DnD sensors
   const sensors = useSensors(
@@ -318,7 +459,12 @@ export function SetlistEditorPage() {
   return (
     <div className="flex flex-col flex-1 pb-28">
       <TopBar
-        title="Edit Setlist"
+        title={
+          <span className="flex items-center gap-2">
+            {isAuto && <Sparkles size={14} className="text-violet-400 flex-shrink-0" />}
+            {isAuto ? 'Smart Setlist' : 'Edit Setlist'}
+          </span>
+        }
         showBack
         right={
           setlistSongs.length > 0 ? (
@@ -347,7 +493,7 @@ export function SetlistEditorPage() {
         />
 
         {/* ── Event details + Add song row ── */}
-        <div className="grid grid-cols-2 gap-3 items-start">
+        <div className={`gap-3 items-start ${isAuto ? 'flex' : 'grid grid-cols-2'}`}>
 
           {/* Event Details collapsible */}
           <div className="bg-slate-800/60 border border-slate-700 rounded-xl overflow-visible">
@@ -370,8 +516,8 @@ export function SetlistEditorPage() {
             </button>
           </div>
 
-          {/* Add Song to Setlist dropdown */}
-          <div className="relative" ref={addSongRef}>
+          {/* Add Song to Setlist dropdown (manual only) */}
+          {!isAuto && <div className="relative" ref={addSongRef}>
             <button
               onClick={() => { setShowAddSong((v) => !v); setAddSongQuery('') }}
               className="w-full flex items-center justify-between gap-1.5 px-3 py-3
@@ -442,7 +588,7 @@ export function SetlistEditorPage() {
                 </div>
               </div>
             )}
-          </div>
+          </div>}
         </div>
 
         {/* Event details expanded panel (renders below the row) */}
@@ -496,6 +642,15 @@ export function SetlistEditorPage() {
           </div>
         )}
 
+        {/* ── Smart filters panel (auto setlists only) ── */}
+        {isAuto && (
+          <AutoFiltersPanel
+            filters={autoFilters}
+            onChange={handleFiltersChange}
+            allSongs={allSongs}
+          />
+        )}
+
         {/* ── Stats bar ── */}
         {setlistSongs.length > 0 && (
           <div className="flex items-center gap-4 text-sm text-slate-400">
@@ -509,33 +664,61 @@ export function SetlistEditorPage() {
                 {formatDuration(total)} total
               </span>
             )}
+            {isAuto && (
+              <button
+                onClick={() => handleFiltersChange(autoFilters)}
+                className="ml-auto flex items-center gap-1 text-xs text-violet-400 hover:text-violet-300"
+                title="Refresh matched songs"
+              >
+                <RefreshCw size={12} />
+                Refresh
+              </button>
+            )}
           </div>
         )}
 
         {/* ── Song list ── */}
         {setlistSongs.length > 0 ? (
-          <DndContext
-            sensors={sensors}
-            collisionDetection={closestCenter}
-            onDragEnd={handleDragEnd}
-          >
-            <SortableContext items={songIds} strategy={verticalListSortingStrategy}>
-              <div className="space-y-2">
-                {setlistSongs.map((song, index) => (
-                  <SortableSongRow
-                    key={song.id}
-                    song={song}
-                    index={index}
-                    onRemove={() => removeSong(song.id)}
-                  />
-                ))}
-              </div>
-            </SortableContext>
-          </DndContext>
+          isAuto ? (
+            /* Auto setlist: read-only ordered list */
+            <div className="space-y-2">
+              {setlistSongs.map((song, index) => {
+                const meta = [song.artist, song.key].filter(Boolean).join(' · ')
+                return (
+                  <div key={song.id}
+                    className="flex items-center gap-3 px-3 py-3 bg-slate-800 border border-slate-700 rounded-xl">
+                    <span className="w-6 text-center text-sm text-slate-500 flex-shrink-0">{index + 1}</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-slate-100 truncate">{song.title}</p>
+                      {meta && <p className="text-sm text-slate-400 truncate">{meta}</p>}
+                    </div>
+                    {song.year && <span className="text-xs text-slate-500 flex-shrink-0">{song.year}</span>}
+                    {song.durationSeconds != null && (
+                      <span className="text-sm text-slate-500 flex-shrink-0">{formatDuration(song.durationSeconds)}</span>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          ) : (
+            /* Manual setlist: drag-and-drop */
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+              <SortableContext items={songIds} strategy={verticalListSortingStrategy}>
+                <div className="space-y-2">
+                  {setlistSongs.map((song, index) => (
+                    <SortableSongRow key={song.id} song={song} index={index}
+                      onRemove={() => removeSong(song.id)} />
+                  ))}
+                </div>
+              </SortableContext>
+            </DndContext>
+          )
         ) : (
           <div className="text-center py-10 text-slate-500 border-2 border-dashed border-slate-700 rounded-xl">
             <Music2 size={32} className="mx-auto mb-2 opacity-40" />
-            <p>No songs yet — search below to add some.</p>
+            {isAuto
+              ? <p>No songs match the current filters yet.</p>
+              : <p>No songs yet — use Add Song to Setlist above.</p>}
           </div>
         )}
 

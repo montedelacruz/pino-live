@@ -2,7 +2,7 @@ import { useNavigate } from 'react-router-dom'
 import { ArrowLeft } from 'lucide-react'
 
 interface TopBarProps {
-  title: string
+  title: React.ReactNode
   showBack?: boolean
   right?: React.ReactNode
 }

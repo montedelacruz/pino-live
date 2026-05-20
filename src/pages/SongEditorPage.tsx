@@ -19,6 +19,7 @@ const EMPTY_DRAFT: DraftSong = {
   lyrics: '',
   notes: '',
   durationSeconds: null,
+  year: undefined,
 }
 
 const LANGUAGES = [
@@ -252,43 +253,59 @@ export function SongEditorPage() {
           </Field>
         </div>
 
-        {/* Language + Genre */}
+        {/* Genre + Year */}
         <div className="grid grid-cols-2 gap-3">
-          <Field label="Language">
-            <select
-              value={languageSelect}
-              onChange={(e) => {
-                const val = e.target.value
-                setLanguageSelect(val)
-                if (val !== 'Other') setField('language', val)
-                else setField('language', '')
-              }}
-              className={inputClass}
-            >
-              <option value="">— none —</option>
-              {LANGUAGES.map((l) => (
-                <option key={l} value={l}>{l}</option>
-              ))}
-            </select>
-            {languageSelect === 'Other' && (
-              <input
-                autoFocus
-                value={draft.language}
-                onChange={(e) => setField('language', e.target.value)}
-                placeholder="Type language…"
-                className={`${inputClass} mt-2`}
-              />
-            )}
-          </Field>
           <Field label="Genre">
             <input
               value={draft.genre}
               onChange={(e) => setField('genre', e.target.value)}
-              placeholder="e.g. Gospel"
+              placeholder="e.g. Gospel, Rock, Pop"
+              className={inputClass}
+            />
+          </Field>
+          <Field label="Year" hint="Release / composition year">
+            <input
+              type="number"
+              min={1900}
+              max={new Date().getFullYear()}
+              value={draft.year ?? ''}
+              onChange={(e) => {
+                const v = e.target.value
+                setField('year', v === '' ? undefined : Math.max(1900, Math.min(new Date().getFullYear(), parseInt(v))))
+              }}
+              placeholder="e.g. 1985"
               className={inputClass}
             />
           </Field>
         </div>
+
+        {/* Language */}
+        <Field label="Language">
+          <select
+            value={languageSelect}
+            onChange={(e) => {
+              const val = e.target.value
+              setLanguageSelect(val)
+              if (val !== 'Other') setField('language', val)
+              else setField('language', '')
+            }}
+            className={inputClass}
+          >
+            <option value="">— none —</option>
+            {LANGUAGES.map((l) => (
+              <option key={l} value={l}>{l}</option>
+            ))}
+          </select>
+          {languageSelect === 'Other' && (
+            <input
+              autoFocus
+              value={draft.language}
+              onChange={(e) => setField('language', e.target.value)}
+              placeholder="Type language…"
+              className={`${inputClass} mt-2`}
+            />
+          )}
+        </Field>
 
         {/* Tags */}
         <Field label="Tags" hint="Comma separated, e.g. worship, fast, opener">

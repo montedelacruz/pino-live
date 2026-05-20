@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { db, type Setlist } from '../db/db'
+import { db, type Setlist, type AutoFilters } from '../db/db'
 import { syncSetlistUp, deleteSetlistUp } from '../db/firestoreSync'
 import { getCurrentUid } from './currentUser'
 import { scheduleGitHubSync } from '../utils/githubSync'
@@ -11,6 +11,7 @@ interface SetlistState {
   hydrate: () => Promise<void>
   setSetlists: (setlists: Setlist[]) => void
   addSetlist: (name: string) => Promise<Setlist>
+  addAutoSetlist: (name: string, filters?: AutoFilters) => Promise<Setlist>
   updateSetlist: (id: string, data: Partial<Omit<Setlist, 'id' | 'createdAt'>>) => Promise<void>
   deleteSetlist: (id: string) => Promise<void>
   duplicateSetlist: (id: string) => Promise<Setlist | undefined>
@@ -38,7 +39,21 @@ export const useSetlistStore = create<SetlistState>((set, get) => ({
 
   addSetlist: async (name) => {
     const now = Date.now()
-    const setlist: Setlist = { id: uuidv4(), name, songIds: [], createdAt: now, updatedAt: now }
+    const setlist: Setlist = { id: uuidv4(), name, songIds: [], type: 'manual', createdAt: now, updatedAt: now }
+    await db.setlists.add(setlist)
+    set((s) => ({ setlists: [setlist, ...s.setlists] }))
+    const u = uid()
+    if (u) syncSetlistUp(u, setlist).catch(console.error)
+    scheduleGitHubSync(true)
+    return setlist
+  },
+
+  addAutoSetlist: async (name, filters = {}) => {
+    const now = Date.now()
+    const setlist: Setlist = {
+      id: uuidv4(), name, songIds: [], type: 'auto',
+      autoFilters: filters, createdAt: now, updatedAt: now,
+    }
     await db.setlists.add(setlist)
     set((s) => ({ setlists: [setlist, ...s.setlists] }))
     const u = uid()
