@@ -12,8 +12,10 @@ import { SetlistEditorPage } from './pages/SetlistEditorPage'
 import { PerformancePage } from './pages/PerformancePage'
 import { RehearsalPage } from './pages/RehearsalPage'
 import { PracticePage } from './pages/PracticePage'
+import { PracticeHistoryPage } from './pages/PracticeHistoryPage'
 import { useSongStore } from './store/songStore'
 import { useSetlistStore } from './store/setlistStore'
+import { usePracticeHistoryStore } from './store/practiceHistoryStore'
 import { setCurrentUid } from './store/currentUser'
 import { subscribeSongs, subscribeSetlists } from './db/firestoreSync'
 import { Loader2 } from 'lucide-react'
@@ -33,10 +35,11 @@ function Layout({ children }: { children: React.ReactNode }) {
 
 export default function App() {
   const { user, isLoaded } = useUser()
-  const hydrateSongs = useSongStore((s) => s.hydrate)
+  const hydrateSongs    = useSongStore((s) => s.hydrate)
   const hydrateSetlists = useSetlistStore((s) => s.hydrate)
-  const setSongs = useSongStore((s) => s.setSongs)
-  const setSetlists = useSetlistStore((s) => s.setSetlists)
+  const hydratePractice = usePracticeHistoryStore((s) => s.hydrate)
+  const setSongs     = useSongStore((s) => s.setSongs)
+  const setSetlists  = useSetlistStore((s) => s.setSetlists)
 
   // Keep the module-level uid in sync with Clerk so stores can access it
   useEffect(() => {
@@ -50,10 +53,12 @@ export default function App() {
     if (!user) {
       hydrateSongs()
       hydrateSetlists()
+      hydratePractice()
       return
     }
     const unsubSongs = subscribeSongs(user.id, setSongs)
     const unsubSetlists = subscribeSetlists(user.id, setSetlists)
+    hydratePractice()
     return () => { unsubSongs(); unsubSetlists() }
   }, [user?.id, isLoaded]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -85,6 +90,7 @@ export default function App() {
           <Route path="/performance/:id"     element={<PerformancePage />} />
           <Route path="/rehearsal"           element={<RehearsalPage />} />
           <Route path="/practice"            element={<PracticePage />} />
+          <Route path="/practice/history"    element={<PracticeHistoryPage />} />
           <Route path="*"                    element={<Navigate to="/" replace />} />
         </Routes>
       </Layout>

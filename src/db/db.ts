@@ -12,8 +12,17 @@ export interface Song {
   notes: string
   durationSeconds: number | null
   year?: number          // release / composition year
+  needsWork?: boolean    // flagged during practice
   createdAt: number
   updatedAt: number
+}
+
+export interface PracticeEntry {
+  id: string
+  songId: string
+  sessionId: string
+  result: 'nailed' | 'needs_work' | 'skipped'
+  practicedAt: number    // Date.now()
 }
 
 export interface AutoFilters {
@@ -43,12 +52,18 @@ export interface Setlist {
 class SetlistDB extends Dexie {
   songs!: EntityTable<Song, 'id'>
   setlists!: EntityTable<Setlist, 'id'>
+  practiceEntries!: EntityTable<PracticeEntry, 'id'>
 
   constructor() {
     super('setlist-app-db')
     this.version(1).stores({
       songs: 'id, title, artist, language, genre, key, updatedAt',
       setlists: 'id, name, updatedAt',
+    })
+    this.version(2).stores({
+      songs: 'id, title, artist, language, genre, key, updatedAt',
+      setlists: 'id, name, updatedAt',
+      practiceEntries: 'id, songId, sessionId, practicedAt, result',
     })
   }
 }
