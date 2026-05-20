@@ -8,7 +8,7 @@ export function SongViewPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { songs } = useSongStore()
-  const { fontSize, fontMode, increaseFontSize, decreaseFontSize, toggleFontMode } =
+  const { fontSize, lineHeight, fontMode, increaseFontSize, decreaseFontSize, increaseLineHeight, decreaseLineHeight, toggleFontMode } =
     useSettingsStore()
 
   const song = songs.find((s) => s.id === id)
@@ -64,6 +64,30 @@ export function SongViewPage() {
               A+
             </button>
 
+            {/* Line spacing */}
+            <button
+              onClick={decreaseLineHeight}
+              className="p-2 text-slate-400 hover:text-slate-100 hover:bg-slate-800 rounded-lg transition-colors"
+              title="Tighter line spacing"
+            >
+              <svg width="17" height="17" viewBox="0 0 18 18" fill="currentColor">
+                <rect x="2" y="2" width="14" height="2" rx="1"/>
+                <rect x="2" y="8" width="14" height="2" rx="1"/>
+                <rect x="2" y="14" width="14" height="2" rx="1"/>
+              </svg>
+            </button>
+            <button
+              onClick={increaseLineHeight}
+              className="p-2 text-slate-400 hover:text-slate-100 hover:bg-slate-800 rounded-lg transition-colors"
+              title="Looser line spacing"
+            >
+              <svg width="17" height="17" viewBox="0 0 18 18" fill="currentColor">
+                <rect x="2" y="2" width="14" height="2" rx="1"/>
+                <rect x="2" y="9" width="14" height="2" rx="1"/>
+                <rect x="2" y="16" width="14" height="2" rx="1"/>
+              </svg>
+            </button>
+
             {/* Edit */}
             <button
               onClick={() => navigate(`/songs/${song.id}/edit`)}
@@ -93,10 +117,10 @@ export function SongViewPage() {
 
         {/* Lyrics */}
         <div
-          className={`whitespace-pre-wrap leading-relaxed text-slate-100 pt-2 ${
+          className={`whitespace-pre-wrap text-slate-100 pt-2 ${
             fontMode === 'monospace' ? 'font-mono' : ''
           }`}
-          style={{ fontSize: `${fontSize}px` }}
+          style={{ fontSize: `${fontSize}px`, lineHeight }}
         >
           {song.lyrics || <span className="text-slate-500 italic">No lyrics added yet.</span>}
         </div>
