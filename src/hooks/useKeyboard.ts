@@ -50,16 +50,15 @@ export function usePerformanceKeyboard(handlers: PerformanceKeyMap) {
 
       switch (e.key) {
 
-        // ── Right pedal (PageDown) — double-click aware ──────────────────
-        case 'PageDown': {
+        // ── Right pedal: PageDown or ArrowDown — double-click aware ─────
+        case 'PageDown':
+        case 'ArrowDown': {
           e.preventDefault()
           if (rightTimer) {
-            // Second press within window → double click
             clearTimeout(rightTimer)
             rightTimer = null
             handlersRef.current.onRightDouble()
           } else {
-            // First press → wait to see if a second arrives
             rightTimer = setTimeout(() => {
               rightTimer = null
               handlersRef.current.onRightSingle()
@@ -68,8 +67,9 @@ export function usePerformanceKeyboard(handlers: PerformanceKeyMap) {
           break
         }
 
-        // ── Left pedal (PageUp) — double-click aware ─────────────────────
-        case 'PageUp': {
+        // ── Left pedal: PageUp or ArrowUp — double-click aware ───────────
+        case 'PageUp':
+        case 'ArrowUp': {
           e.preventDefault()
           if (leftTimer) {
             clearTimeout(leftTimer)
@@ -92,14 +92,6 @@ export function usePerformanceKeyboard(handlers: PerformanceKeyMap) {
         case 'ArrowLeft':
           e.preventDefault()
           handlersRef.current.onPrev()
-          break
-        case 'ArrowDown':
-          e.preventDefault()
-          handlersRef.current.onScrollDown()
-          break
-        case 'ArrowUp':
-          e.preventDefault()
-          handlersRef.current.onScrollUp()
           break
         case 'Escape':
           e.preventDefault()
