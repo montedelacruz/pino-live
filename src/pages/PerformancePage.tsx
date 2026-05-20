@@ -38,8 +38,25 @@ export function PerformancePage() {
 
   const [currentIndex, setCurrentIndex] = useState(0)
   const [showControls, setShowControls] = useState(true)
+  const [atBottom, setAtBottom] = useState(false)
+  const [atTop, setAtTop]       = useState(true)
   const lyricsRef = useRef<HTMLDivElement>(null)
   const controlsTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Track scroll position so we can highlight Prev/Next when the pedal will flip songs
+  const updateEdgeState = useCallback(() => {
+    const el = lyricsRef.current
+    if (!el) return
+    setAtTop(el.scrollTop <= AT_EDGE_THRESHOLD)
+    setAtBottom(el.scrollHeight - el.scrollTop - el.clientHeight <= AT_EDGE_THRESHOLD)
+  }, [])
+
+  // Re-evaluate edges whenever the song changes (scroll resets to top)
+  useEffect(() => {
+    // Small delay so the DOM has settled after the song switch
+    const t = setTimeout(updateEdgeState, 50)
+    return () => clearTimeout(t)
+  }, [currentIndex, updateEdgeState])
 
   // Keep screen awake during performance
   useWakeLock(true)
@@ -262,6 +279,7 @@ export function PerformancePage() {
       {/* ── Lyrics ── */}
       <div
         ref={lyricsRef}
+        onScroll={updateEdgeState}
         className="flex-1 overflow-y-auto px-6 pt-16 pb-24"
         style={{ scrollbarWidth: 'none' }}
       >
@@ -284,13 +302,15 @@ export function PerformancePage() {
                     px-4 py-4 bg-gradient-to-t from-slate-950/90 to-transparent
                     transition-opacity duration-300 ${showControls ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
       >
-        {/* Prev */}
+        {/* Prev — yellow when pedal-up will jump to previous song */}
         <button
           onClick={() => goTo(currentIndex - 1)}
           disabled={currentIndex === 0}
-          className="flex items-center gap-1 px-4 py-3 rounded-xl bg-slate-800/80
-                     text-slate-300 hover:text-slate-100 disabled:opacity-30
-                     disabled:cursor-not-allowed transition-colors"
+          className={`flex items-center gap-1 px-4 py-3 rounded-xl transition-colors
+                      disabled:opacity-30 disabled:cursor-not-allowed
+                      ${atTop && currentIndex > 0
+                        ? 'bg-yellow-400/20 text-yellow-300 border border-yellow-400/50'
+                        : 'bg-slate-800/80 text-slate-300 hover:text-slate-100'}`}
         >
           <ChevronLeft size={20} />
           <span className="text-sm font-medium">Prev</span>
@@ -304,13 +324,15 @@ export function PerformancePage() {
           </span>
         )}
 
-        {/* Next */}
+        {/* Next — yellow when pedal-down will jump to next song */}
         <button
           onClick={() => goTo(currentIndex + 1)}
           disabled={currentIndex === songs.length - 1}
-          className="flex items-center gap-1 px-4 py-3 rounded-xl bg-slate-800/80
-                     text-slate-300 hover:text-slate-100 disabled:opacity-30
-                     disabled:cursor-not-allowed transition-colors"
+          className={`flex items-center gap-1 px-4 py-3 rounded-xl transition-colors
+                      disabled:opacity-30 disabled:cursor-not-allowed
+                      ${atBottom && currentIndex < songs.length - 1
+                        ? 'bg-yellow-400/20 text-yellow-300 border border-yellow-400/50'
+                        : 'bg-slate-800/80 text-slate-300 hover:text-slate-100'}`}
         >
           <span className="text-sm font-medium">Next</span>
           <ChevronRight size={20} />
