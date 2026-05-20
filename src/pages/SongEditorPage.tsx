@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { Trash2, Copy, Search, Save, Loader2 } from 'lucide-react'
+import { Trash2, Copy, Search, Save, Loader2, Music2 } from 'lucide-react'
 import { TopBar } from '../components/TopBar'
 import { LyricsSearchModal, type LyricsSearchResult } from '../components/LyricsSearchModal'
 import { useSongStore } from '../store/songStore'
@@ -262,21 +262,32 @@ export function SongEditorPage() {
           </div>
         </Field>
 
-        {/* Lyrics */}
-        <Field
-          label="Lyrics"
-          action={
-            <button
-              type="button"
-              onClick={() => setShowLyricsSearch(true)}
-              className="flex items-center gap-1 text-xs text-violet-400 hover:text-violet-300
-                         hover:bg-slate-800 px-2 py-1 rounded-lg transition-colors"
-            >
-              <Search size={12} />
-              Search online
-            </button>
-          }
+        {/* Lyrics search — prominent card */}
+        <button
+          type="button"
+          onClick={() => setShowLyricsSearch(true)}
+          className="w-full flex items-center gap-4 px-4 py-3.5 rounded-xl border-2 border-dashed
+                     border-violet-500/40 bg-violet-500/5 hover:bg-violet-500/10
+                     hover:border-violet-500/60 transition-all group"
         >
+          {/* Icon */}
+          <div className="relative flex-shrink-0 w-10 h-10 flex items-center justify-center
+                          bg-violet-600/20 rounded-xl group-hover:bg-violet-600/30 transition-colors">
+            <Music2 size={18} className="text-violet-400" />
+            <Search size={11} className="text-violet-300 absolute bottom-1 right-1" />
+          </div>
+          <div className="text-left">
+            <p className="text-sm font-semibold text-violet-300 group-hover:text-violet-200">
+              Search lyrics online
+            </p>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Find title, artist and lyrics automatically
+            </p>
+          </div>
+        </button>
+
+        {/* Lyrics */}
+        <Field label="Lyrics">
           <textarea
             value={draft.lyrics}
             onChange={(e) => setField('lyrics', e.target.value)}
