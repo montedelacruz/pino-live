@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useCallback } from 'react'
+import { useEffect, useState, useRef, useCallback, useMemo } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import {
   DndContext,
@@ -32,6 +32,7 @@ import {
   FileText,
   ChevronDown,
   ChevronUp,
+  ListPlus,
 } from 'lucide-react'
 import { TopBar } from '../components/TopBar'
 import { useSetlistStore } from '../store/setlistStore'
@@ -166,11 +167,24 @@ export function SetlistEditorPage() {
   const [notes,         setNotes]         = useState('')
 
   // UI state
-  const [searchQuery,  setSearchQuery]  = useState('')
-  const [showSearch,   setShowSearch]   = useState(false)
   const [showDetails,  setShowDetails]  = useState(false)
+  const [showAddSong,  setShowAddSong]  = useState(false)
+  const [addSongQuery, setAddSongQuery] = useState('')
 
-  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const saveTimer  = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const addSongRef = useRef<HTMLDivElement>(null)
+
+  // Close the add-song dropdown when clicking outside
+  useEffect(() => {
+    if (!showAddSong) return
+    const handler = (e: MouseEvent) => {
+      if (addSongRef.current && !addSongRef.current.contains(e.target as Node)) {
+        setShowAddSong(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [showAddSong])
 
   // Hydrate local state from store
   useEffect(() => {
@@ -270,17 +284,21 @@ export function SetlistEditorPage() {
     .map((sid) => allSongs.find((s) => s.id === sid))
     .filter(Boolean) as Song[]
 
-  // Songs available to add
-  const searchResults = allSongs.filter((s) => {
-    if (songIds.includes(s.id)) return false
-    if (!searchQuery.trim()) return true
-    const q = searchQuery.toLowerCase()
-    return (
-      s.title.toLowerCase().includes(q) ||
-      s.artist.toLowerCase().includes(q) ||
-      s.tags.some((t) => t.toLowerCase().includes(q))
-    )
-  })
+  // Songs available to add (sorted A→Z, filtered by search query)
+  const searchResults = useMemo(() => {
+    const q = addSongQuery.trim().toLowerCase()
+    return allSongs
+      .filter((s) => {
+        if (songIds.includes(s.id)) return false
+        if (!q) return true
+        return (
+          s.title.toLowerCase().includes(q) ||
+          s.artist.toLowerCase().includes(q) ||
+          s.tags.some((t) => t.toLowerCase().includes(q))
+        )
+      })
+      .sort((a, b) => a.title.localeCompare(b.title))
+  }, [allSongs, songIds, addSongQuery])
 
   const total = totalDuration(setlistSongs.map((s) => s.durationSeconds))
 
@@ -328,76 +346,155 @@ export function SetlistEditorPage() {
                      focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent"
         />
 
-        {/* ── Event details collapsible ── */}
-        <div className="bg-slate-800/60 border border-slate-700 rounded-xl overflow-hidden">
-          <button
-            onClick={() => setShowDetails((v) => !v)}
-            className="w-full flex items-center justify-between px-4 py-3
-                       text-sm font-medium text-slate-300 hover:text-slate-100
-                       hover:bg-slate-700/40 transition-colors"
-          >
-            <span className="flex items-center gap-2">
-              <CalendarDays size={15} className={hasEventDetails ? 'text-violet-400' : 'text-slate-500'} />
-              Event Details
-              {hasEventDetails && (
-                <span className="text-xs px-1.5 py-0.5 bg-violet-700/40 text-violet-300 rounded-full">
-                  filled
-                </span>
-              )}
-            </span>
-            {showDetails ? <ChevronUp size={16} className="text-slate-500" /> : <ChevronDown size={16} className="text-slate-500" />}
-          </button>
+        {/* ── Event details + Add song row ── */}
+        <div className="grid grid-cols-2 gap-3 items-start">
 
-          {showDetails && (
-            <div className="px-4 pb-4 space-y-3 border-t border-slate-700/60">
-              <div className="pt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <FieldInput
-                  icon={CalendarDays}
-                  label="Date"
-                  type="date"
-                  value={date}
-                  onChange={(v) => { setDate(v); saveAll({ date: v }) }}
-                />
-                <FieldInput
-                  icon={MapPin}
-                  label="Venue"
-                  value={venue}
-                  onChange={(v) => { setVenue(v); saveAll({ venue: v }) }}
-                  placeholder="Club, church, event name…"
-                />
-                <FieldInput
-                  icon={User}
-                  label="Contact Person"
-                  value={contactPerson}
-                  onChange={(v) => { setContactPerson(v); saveAll({ contactPerson: v }) }}
-                  placeholder="Booking agent, coordinator…"
-                />
-                <FieldInput
-                  icon={Phone}
-                  label="Contact Info"
-                  value={contactPhone}
-                  onChange={(v) => { setContactPhone(v); saveAll({ contactPhone: v }) }}
-                  placeholder="Phone, email, or handle…"
-                />
+          {/* Event Details collapsible */}
+          <div className="bg-slate-800/60 border border-slate-700 rounded-xl overflow-visible">
+            <button
+              onClick={() => setShowDetails((v) => !v)}
+              className="w-full flex items-center justify-between px-3 py-3
+                         text-sm font-medium text-slate-300 hover:text-slate-100
+                         hover:bg-slate-700/40 transition-colors rounded-xl"
+            >
+              <span className="flex items-center gap-1.5 min-w-0">
+                <CalendarDays size={14} className={hasEventDetails ? 'text-violet-400 flex-shrink-0' : 'text-slate-500 flex-shrink-0'} />
+                <span className="truncate">Event Details</span>
+                {hasEventDetails && (
+                  <span className="flex-shrink-0 text-xs px-1.5 py-0.5 bg-violet-700/40 text-violet-300 rounded-full">
+                    filled
+                  </span>
+                )}
+              </span>
+              {showDetails ? <ChevronUp size={15} className="text-slate-500 flex-shrink-0 ml-1" /> : <ChevronDown size={15} className="text-slate-500 flex-shrink-0 ml-1" />}
+            </button>
+          </div>
+
+          {/* Add Song to Setlist dropdown */}
+          <div className="relative" ref={addSongRef}>
+            <button
+              onClick={() => { setShowAddSong((v) => !v); setAddSongQuery('') }}
+              className="w-full flex items-center justify-between gap-1.5 px-3 py-3
+                         bg-slate-800/60 border border-slate-700 rounded-xl
+                         text-sm font-medium text-slate-300 hover:text-slate-100
+                         hover:bg-slate-700/40 transition-colors"
+            >
+              <span className="flex items-center gap-1.5 min-w-0">
+                <ListPlus size={14} className="text-violet-400 flex-shrink-0" />
+                <span className="truncate">Add Song to Setlist</span>
+              </span>
+              <ChevronDown size={15} className={`text-slate-500 flex-shrink-0 transition-transform ${showAddSong ? 'rotate-180' : ''}`} />
+            </button>
+
+            {showAddSong && (
+              <div className="absolute left-0 right-0 mt-1 z-30 bg-slate-850 bg-slate-900
+                              border border-slate-700 rounded-xl shadow-2xl overflow-hidden
+                              min-w-[260px]">
+                {/* Search input */}
+                <div className="p-2 border-b border-slate-700/60">
+                  <div className="relative flex items-center">
+                    <Search size={14} className="absolute left-3 text-slate-400 pointer-events-none" />
+                    <input
+                      autoFocus
+                      value={addSongQuery}
+                      onChange={(e) => setAddSongQuery(e.target.value)}
+                      placeholder="Search songs…"
+                      className="w-full bg-slate-800 border border-slate-700 rounded-lg pl-8 pr-3 py-2
+                                 text-slate-100 placeholder-slate-500 text-sm
+                                 focus:outline-none focus:ring-1 focus:ring-violet-500"
+                    />
+                  </div>
+                </div>
+
+                {/* Song list */}
+                <div className="max-h-64 overflow-y-auto">
+                  {searchResults.length === 0 ? (
+                    <p className="text-sm text-slate-500 py-4 text-center">
+                      {addSongQuery ? 'No matching songs.' : 'All songs already added.'}
+                    </p>
+                  ) : (
+                    searchResults.map((song) => {
+                      const meta = [song.artist, song.key].filter(Boolean).join(' · ')
+                      return (
+                        <button
+                          key={song.id}
+                          onClick={() => { addSong(song.id) }}
+                          className="w-full flex items-center gap-2.5 px-3 py-2.5
+                                     hover:bg-violet-900/30 text-left transition-colors
+                                     border-b border-slate-700/40 last:border-0"
+                        >
+                          <div className="flex-shrink-0 w-6 h-6 bg-slate-700 rounded flex items-center justify-center">
+                            <Music2 size={12} className="text-slate-400" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-slate-100 text-sm truncate">{song.title}</p>
+                            {meta && <p className="text-xs text-slate-500 truncate">{meta}</p>}
+                          </div>
+                          {song.durationSeconds != null && (
+                            <span className="text-xs text-slate-500 flex-shrink-0">
+                              {formatDuration(song.durationSeconds)}
+                            </span>
+                          )}
+                        </button>
+                      )
+                    })
+                  )}
+                </div>
               </div>
-              <div className="space-y-1">
-                <label className="flex items-center gap-1.5 text-xs text-slate-400 font-medium uppercase tracking-wide">
-                  <FileText size={12} />
-                  Notes
-                </label>
-                <textarea
-                  value={notes}
-                  onChange={(e) => { setNotes(e.target.value); saveAll({ notes: e.target.value }) }}
-                  placeholder="Load-in time, dress code, set length, payment details…"
-                  rows={3}
-                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5
-                             text-slate-100 placeholder-slate-500 text-sm resize-none
-                             focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent"
-                />
-              </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
+
+        {/* Event details expanded panel (renders below the row) */}
+        {showDetails && (
+          <div className="bg-slate-800/60 border border-slate-700 rounded-xl px-4 pb-4 space-y-3 -mt-2">
+            <div className="pt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <FieldInput
+                icon={CalendarDays}
+                label="Date"
+                type="date"
+                value={date}
+                onChange={(v) => { setDate(v); saveAll({ date: v }) }}
+              />
+              <FieldInput
+                icon={MapPin}
+                label="Venue"
+                value={venue}
+                onChange={(v) => { setVenue(v); saveAll({ venue: v }) }}
+                placeholder="Club, church, event name…"
+              />
+              <FieldInput
+                icon={User}
+                label="Contact Person"
+                value={contactPerson}
+                onChange={(v) => { setContactPerson(v); saveAll({ contactPerson: v }) }}
+                placeholder="Booking agent, coordinator…"
+              />
+              <FieldInput
+                icon={Phone}
+                label="Contact Info"
+                value={contactPhone}
+                onChange={(v) => { setContactPhone(v); saveAll({ contactPhone: v }) }}
+                placeholder="Phone, email, or handle…"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="flex items-center gap-1.5 text-xs text-slate-400 font-medium uppercase tracking-wide">
+                <FileText size={12} />
+                Notes
+              </label>
+              <textarea
+                value={notes}
+                onChange={(e) => { setNotes(e.target.value); saveAll({ notes: e.target.value }) }}
+                placeholder="Load-in time, dress code, set length, payment details…"
+                rows={3}
+                className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5
+                           text-slate-100 placeholder-slate-500 text-sm resize-none
+                           focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+              />
+            </div>
+          </div>
+        )}
 
         {/* ── Stats bar ── */}
         {setlistSongs.length > 0 && (
@@ -442,68 +539,6 @@ export function SetlistEditorPage() {
           </div>
         )}
 
-        {/* ── Add songs ── */}
-        <div className="space-y-3">
-          <button
-            onClick={() => setShowSearch((v) => !v)}
-            className="flex items-center gap-2 text-sm text-violet-400 hover:text-violet-300
-                       font-medium transition-colors"
-          >
-            <Search size={16} />
-            {showSearch ? 'Hide song search' : 'Add songs…'}
-          </button>
-
-          {showSearch && (
-            <div className="space-y-2">
-              <div className="relative flex items-center">
-                <Search size={16} className="absolute left-3 text-slate-400 pointer-events-none" />
-                <input
-                  autoFocus
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search your library…"
-                  className="w-full bg-slate-800 border border-slate-700 rounded-xl pl-9 pr-4 py-2.5
-                             text-slate-100 placeholder-slate-500 focus:outline-none
-                             focus:ring-2 focus:ring-violet-500 focus:border-transparent"
-                />
-              </div>
-
-              <div className="space-y-1.5 max-h-72 overflow-y-auto">
-                {searchResults.length === 0 && (
-                  <p className="text-sm text-slate-500 py-3 text-center">
-                    {searchQuery ? 'No matching songs.' : 'All songs already added.'}
-                  </p>
-                )}
-                {searchResults.map((song) => {
-                  const meta = [song.artist, song.key].filter(Boolean).join(' · ')
-                  return (
-                    <button
-                      key={song.id}
-                      onClick={() => addSong(song.id)}
-                      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl
-                                 bg-slate-800 hover:bg-slate-700 border border-slate-700
-                                 hover:border-violet-600 text-left transition-colors group"
-                    >
-                      <div className="w-7 h-7 flex-shrink-0 bg-slate-700 group-hover:bg-violet-900/60
-                                      rounded-lg flex items-center justify-center transition-colors">
-                        <Music2 size={14} className="text-slate-400 group-hover:text-violet-400" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-slate-100 truncate">{song.title}</p>
-                        {meta && <p className="text-xs text-slate-400 truncate">{meta}</p>}
-                      </div>
-                      {song.durationSeconds != null && (
-                        <span className="text-xs text-slate-500 flex-shrink-0">
-                          {formatDuration(song.durationSeconds)}
-                        </span>
-                      )}
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
-          )}
-        </div>
 
       </div>
     </div>
