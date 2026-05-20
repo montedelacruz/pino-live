@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  Plus, ListMusic, ChevronRight, Trash2, Copy, Clock,
+  Plus, ListMusic, ChevronRight, Trash2, Copy,
   MapPin, CalendarDays, Sparkles,
 } from 'lucide-react'
 import { TopBar } from '../components/TopBar'
