@@ -20,6 +20,15 @@ const EMPTY_DRAFT: DraftSong = {
   durationSeconds: null,
 }
 
+const LANGUAGES = [
+  'English',
+  'Español',
+  'Português',
+  'Français',
+  'Italiano',
+  'Other',
+]
+
 const MUSICAL_KEYS = [
   'C', 'C#', 'Db', 'D', 'D#', 'Eb', 'E', 'F', 'F#', 'Gb',
   'G', 'G#', 'Ab', 'A', 'A#', 'Bb', 'B',
@@ -40,6 +49,7 @@ export function SongEditorPage() {
   const [saving, setSaving] = useState(false)
   const [isDirty, setIsDirty] = useState(false)
   const [showLyricsSearch, setShowLyricsSearch] = useState(false)
+  const [languageSelect, setLanguageSelect] = useState('')
   const createdIdRef = useRef<string | null>(null)
 
   // Populate form when editing an existing song
@@ -48,6 +58,9 @@ export function SongEditorPage() {
       const { id: _id, createdAt: _c, updatedAt: _u, ...rest } = existingSong
       setDraft(rest)
       setTagsInput(existingSong.tags.join(', '))
+      // Set dropdown: known language or 'Other' for custom
+      const known = LANGUAGES.slice(0, -1) // exclude 'Other'
+      setLanguageSelect(known.includes(existingSong.language) ? existingSong.language : (existingSong.language ? 'Other' : ''))
       setIsDirty(false)
     }
   }, [isNew, existingSong?.id]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -209,12 +222,30 @@ export function SongEditorPage() {
         {/* Language + Genre */}
         <div className="grid grid-cols-2 gap-3">
           <Field label="Language">
-            <input
-              value={draft.language}
-              onChange={(e) => setField('language', e.target.value)}
-              placeholder="e.g. English"
+            <select
+              value={languageSelect}
+              onChange={(e) => {
+                const val = e.target.value
+                setLanguageSelect(val)
+                if (val !== 'Other') setField('language', val)
+                else setField('language', '')
+              }}
               className={inputClass}
-            />
+            >
+              <option value="">— none —</option>
+              {LANGUAGES.map((l) => (
+                <option key={l} value={l}>{l}</option>
+              ))}
+            </select>
+            {languageSelect === 'Other' && (
+              <input
+                autoFocus
+                value={draft.language}
+                onChange={(e) => setField('language', e.target.value)}
+                placeholder="Type language…"
+                className={`${inputClass} mt-2`}
+              />
+            )}
           </Field>
           <Field label="Genre">
             <input
