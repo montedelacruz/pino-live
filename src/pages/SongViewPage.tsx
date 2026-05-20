@@ -24,10 +24,10 @@ export function SongViewPage() {
 
   const { songs } = useSongStore()
   const {
-    fontSize, lineHeight, fontMode,
+    fontSize, lineHeight, fontMode, showChords,
     increaseFontSize, decreaseFontSize,
     increaseLineHeight, decreaseLineHeight,
-    toggleFontMode,
+    toggleFontMode, toggleShowChords,
   } = useSettingsStore()
 
   const song = songs.find((s) => s.id === id)
@@ -144,6 +144,14 @@ export function SongViewPage() {
           <rect x="2" y="2" width="14" height="2" rx="1"/><rect x="2" y="9" width="14" height="2" rx="1"/><rect x="2" y="16" width="14" height="2" rx="1"/>
         </svg>
       </button>
+      <button onClick={toggleShowChords}
+        title={showChords ? 'Hide chords' : 'Show chords'}
+        className={`p-2 rounded-lg transition-colors text-xs font-bold font-mono
+                    ${showChords
+                      ? 'bg-violet-700/40 text-violet-300'
+                      : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800'}`}>
+        Am
+      </button>
       <button onClick={() => navigate(`/songs/${song.id}/edit`)} title="Edit song"
         className="p-2 text-slate-400 hover:text-slate-100 hover:bg-slate-800 rounded-lg">
         <Edit2 size={18} />
@@ -166,7 +174,7 @@ export function SongViewPage() {
         className={`whitespace-pre-wrap text-slate-100 pt-1 ${fontMode === 'monospace' ? 'font-mono' : ''}`}
         style={{ fontSize: `${fontSize}px`, lineHeight }}
       >
-        <LyricsRenderer lyrics={song.lyrics} />
+        <LyricsRenderer lyrics={song.lyrics} showChords={showChords} />
       </div>
       {song.notes && (
         <div className="mt-4 p-4 bg-slate-800/60 border border-slate-700 rounded-xl">

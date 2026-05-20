@@ -24,11 +24,13 @@ export function PerformancePage() {
     fontSize,
     lineHeight,
     fontMode,
+    showChords,
     increaseFontSize,
     decreaseFontSize,
     increaseLineHeight,
     decreaseLineHeight,
     toggleFontMode,
+    toggleShowChords,
   } = useSettingsStore()
 
   const setlist = setlists.find((sl) => sl.id === id)
@@ -267,6 +269,18 @@ export function PerformancePage() {
             </svg>
           </button>
 
+          {/* Chord toggle */}
+          <button
+            onClick={toggleShowChords}
+            title={showChords ? 'Hide chords' : 'Show chords'}
+            className={`p-2 rounded-lg transition-colors text-xs font-bold font-mono
+                        ${showChords
+                          ? 'bg-violet-700/50 text-violet-300'
+                          : 'text-slate-500 hover:text-slate-300'}`}
+          >
+            Am
+          </button>
+
           <button
             onClick={handleExit}
             className="p-2 text-slate-400 hover:text-red-400 rounded-lg transition-colors ml-1"
@@ -291,6 +305,7 @@ export function PerformancePage() {
         >
           <LyricsRenderer
             lyrics={song.lyrics}
+            showChords={showChords}
             fallback={<span className="text-slate-600 italic">No lyrics.</span>}
           />
         </div>

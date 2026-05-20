@@ -10,6 +10,7 @@ interface SettingsState {
   fontMode: FontMode
   theme: Theme
   githubPat: string
+  showChords: boolean
   setFontSize: (size: number) => void
   increaseFontSize: () => void
   decreaseFontSize: () => void
@@ -20,6 +21,7 @@ interface SettingsState {
   setTheme: (theme: Theme) => void
   toggleTheme: () => void
   setGithubPat: (pat: string) => void
+  toggleShowChords: () => void
 }
 
 export const useSettingsStore = create<SettingsState>()(
@@ -30,6 +32,7 @@ export const useSettingsStore = create<SettingsState>()(
       fontMode: 'normal',
       theme: 'dark',
       githubPat: '',
+      showChords: true,
 
       setFontSize: (size) => set({ fontSize: Math.min(48, Math.max(12, size)) }),
       increaseFontSize: () => set((s) => ({ fontSize: Math.min(48, s.fontSize + 2) })),
@@ -48,6 +51,7 @@ export const useSettingsStore = create<SettingsState>()(
       toggleTheme: () => set((s) => ({ theme: s.theme === 'dark' ? 'light' : 'dark' })),
 
       setGithubPat: (pat) => set({ githubPat: pat }),
+      toggleShowChords: () => set((s) => ({ showChords: !s.showChords })),
     }),
     { name: 'setlist-app-settings' }
   )
