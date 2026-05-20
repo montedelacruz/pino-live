@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Plus, SlidersHorizontal, Settings2 } from 'lucide-react'
 import { TopBar } from '../components/TopBar'
@@ -6,6 +6,7 @@ import { SearchBar } from '../components/SearchBar'
 import { SongCard } from '../components/SongCard'
 import { DataModal } from '../components/DataModal'
 import { useSongStore } from '../store/songStore'
+import { usePerformanceKeyboard } from '../hooks/useKeyboard'
 import type { Song } from '../db/db'
 
 type SortKey = 'updatedAt' | 'titleAZ' | 'titleZA' | 'artist' | 'language' | 'genre' | 'key'
@@ -60,6 +61,32 @@ export function LibraryPage() {
   )
 
   const sortLabel = SORT_OPTIONS.find((o) => o.value === sortKey)?.label ?? 'Sort'
+
+  // Open a song from the current list and carry the full list as browse context
+  const openSong = useCallback((index: number) => {
+    const clamped = Math.max(0, Math.min(displayedSongs.length - 1, index))
+    const song = displayedSongs[clamped]
+    if (!song) return
+    navigate(`/songs/${song.id}`, {
+      state: { songIds: displayedSongs.map((s) => s.id), index: clamped },
+    })
+  }, [displayedSongs, navigate])
+
+  // Pedal support: down = open first song (or jump into list), double = jump ±10
+  usePerformanceKeyboard({
+    onRightSingle:      () => openSong(0),
+    onLeftSingle:       () => openSong(displayedSongs.length - 1),
+    onRightDouble:      () => openSong(10),
+    onLeftDouble:       () => openSong(displayedSongs.length - 11),
+    onNext:             () => openSong(0),
+    onPrev:             () => openSong(displayedSongs.length - 1),
+    onScrollDown:       () => window.scrollBy({ top: 300, behavior: 'smooth' }),
+    onScrollUp:         () => window.scrollBy({ top: -300, behavior: 'smooth' }),
+    onExit:             () => navigate('/'),
+    onFontIncrease:     () => {},
+    onFontDecrease:     () => {},
+    onToggleFullscreen: () => {},
+  })
 
   return (
     <div className="flex flex-col flex-1 pb-20">
