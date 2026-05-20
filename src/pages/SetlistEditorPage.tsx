@@ -298,7 +298,7 @@ export function SetlistEditorPage() {
   }
 
   return (
-    <div className="flex flex-col flex-1 pb-8">
+    <div className="flex flex-col flex-1 pb-28">
       <TopBar
         title="Edit Setlist"
         showBack
