@@ -1,8 +1,9 @@
 import { useNavigate, useParams, useLocation } from 'react-router-dom'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Edit2, Type, AlignLeft, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Edit2, Type, AlignLeft, ChevronLeft, ChevronRight, ListPlus } from 'lucide-react'
 import { TopBar } from '../components/TopBar'
 import { LyricsRenderer } from '../components/LyricsRenderer'
+import { AddToSetlistModal } from '../components/AddToSetlistModal'
 import { useSongStore } from '../store/songStore'
 import { useSettingsStore } from '../store/settingsStore'
 import { usePerformanceKeyboard } from '../hooks/useKeyboard'
@@ -31,6 +32,7 @@ export function SongViewPage() {
   } = useSettingsStore()
 
   const song = songs.find((s) => s.id === id)
+  const [showSetlistPicker, setShowSetlistPicker] = useState(false)
 
   // ── Browse session state ──────────────────────────────────────────────────
   const browseIds  = browse?.songIds ?? null
@@ -152,11 +154,23 @@ export function SongViewPage() {
                       : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800'}`}>
         Am
       </button>
+      <button onClick={() => setShowSetlistPicker(true)} title="Add to setlist"
+        className="p-2 text-slate-400 hover:text-violet-400 hover:bg-violet-900/30 rounded-lg transition-colors">
+        <ListPlus size={18} />
+      </button>
       <button onClick={() => navigate(`/songs/${song.id}/edit`)} title="Edit song"
         className="p-2 text-slate-400 hover:text-slate-100 hover:bg-slate-800 rounded-lg">
         <Edit2 size={18} />
       </button>
     </div>
+  )
+
+  const setlistPickerModal = showSetlistPicker && (
+    <AddToSetlistModal
+      songId={song.id}
+      songTitle={song.title}
+      onClose={() => setShowSetlistPicker(false)}
+    />
   )
 
   // ── Shared lyrics content ─────────────────────────────────────────────────
@@ -189,6 +203,7 @@ export function SongViewPage() {
   if (browseIds) {
     return (
       <div className="fixed inset-0 z-50 bg-slate-900 flex flex-col">
+        {setlistPickerModal}
         <TopBar title={song.title} showBack right={topBarRight} />
 
         {/* Scrollable lyrics area — ref-based, no window dependency */}
@@ -248,6 +263,7 @@ export function SongViewPage() {
   // ── Normal mode: standard scrollable page ─────────────────────────────────
   return (
     <div className="flex flex-col flex-1 pb-20">
+      {setlistPickerModal}
       <TopBar title={song.title} showBack right={topBarRight} />
       <div className="px-4 pt-4">
         {lyricsContent}
