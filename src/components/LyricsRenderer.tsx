@@ -11,6 +11,31 @@ import React from 'react'
 // NOTE: these use lowercase tags — chord markers use uppercase [A-G]…
 // so there is no ambiguity between the two systems.
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Multi-line markup normaliser
+// ─────────────────────────────────────────────────────────────────────────────
+// When the user selects multiple lines in the editor and applies a format tag,
+// the result is e.g. **line1\nline2**. The line-by-line renderer never sees a
+// complete tag on a single line, so the symbols show raw instead of rendering.
+//
+// This runs once on the whole lyrics string before splitting into lines.
+// It converts **line1\nline2** → **line1**\n**line2** so every line is
+// self-contained and the per-line regex matches normally.
+
+function normalizeMultilineMarkup(text: string): string {
+  const wrap = (open: string, close: string) => (content: string) =>
+    content
+      .split('\n')
+      .map((l) => (l.trim() ? `${open}${l}${close}` : l))
+      .join('\n')
+
+  return text
+    .replace(/\*\*([\s\S]+?)\*\*/g,         (_, c) => wrap('**',  '**' )(c))
+    .replace(/==([\s\S]+?)==/g,              (_, c) => wrap('==',  '==')(c))
+    .replace(/\[r\]([\s\S]+?)\[\/r\]/g,     (_, c) => wrap('[r]', '[/r]')(c))
+    .replace(/\[b\]([\s\S]+?)\[\/b\]/g,     (_, c) => wrap('[b]', '[/b]')(c))
+}
+
 const INLINE_RE = /\*\*(.+?)\*\*|==(.+?)==|\[r\](.+?)\[\/r\]|\[b\](.+?)\[\/b\]/gs
 
 function parseInline(text: string): React.ReactNode[] {
@@ -162,7 +187,7 @@ export function LyricsRenderer({
     )
   }
 
-  const lines = lyrics.split('\n')
+  const lines = normalizeMultilineMarkup(lyrics).split('\n')
 
   return (
     <>
