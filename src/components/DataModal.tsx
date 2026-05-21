@@ -1,5 +1,8 @@
 import { useRef, useState } from 'react'
-import { X, Download, Upload, CheckCircle, AlertCircle, Loader2, Music2, Save, KeyRound } from 'lucide-react'
+import {
+  X, Download, Upload, CheckCircle, AlertCircle, Loader2,
+  Cloud, CloudCheck, RotateCcw, ChevronDown, ChevronUp, KeyRound, Save,
+} from 'lucide-react'
 import { exportData, exportAsRepertoire, importData, type ImportResult } from '../utils/exportImport'
 import { useSongStore } from '../store/songStore'
 import { useSetlistStore } from '../store/setlistStore'
@@ -16,7 +19,7 @@ type Status = 'idle' | 'importing' | 'done' | 'error'
 
 async function importFromUrl(url: string): Promise<ImportResult> {
   const res = await fetch(url)
-  if (!res.ok) throw new Error(`Could not fetch file (${res.status})`)
+  if (!res.ok) throw new Error(`Could not fetch backup (${res.status})`)
   const blob = await res.blob()
   const file = new File([blob], 'pino-import.json', { type: 'application/json' })
   return importData(file)
@@ -24,46 +27,26 @@ async function importFromUrl(url: string): Promise<ImportResult> {
 
 export function DataModal({ onClose }: DataModalProps) {
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const [status, setStatus] = useState<Status>('idle')
-  const [result, setResult] = useState<ImportResult | null>(null)
-  const [errorMsg, setErrorMsg] = useState('')
-  const [exporting, setExporting] = useState(false)
+  const [status,          setStatus]          = useState<Status>('idle')
+  const [result,          setResult]          = useState<ImportResult | null>(null)
+  const [errorMsg,        setErrorMsg]        = useState('')
+  const [exporting,       setExporting]       = useState(false)
+  const [activeRestore,   setActiveRestore]   = useState<string | null>(null)
+  const [showAdvanced,    setShowAdvanced]    = useState(false)
   const [savingRepertoire, setSavingRepertoire] = useState(false)
-  const [bundleImporting, setBundleImporting] = useState(false)
 
   const { githubPat, setGithubPat } = useSettingsStore()
   const [patDraft, setPatDraft] = useState(githubPat)
   const [patSaved, setPatSaved] = useState(false)
 
-  const hydrateSongs = useSongStore((s) => s.hydrate)
+  const hydrateSongs    = useSongStore((s) => s.hydrate)
   const hydrateSetlists = useSetlistStore((s) => s.hydrate)
+  const uid             = getCurrentUid()
 
-  const handleSavePat = () => {
-    setGithubPat(patDraft.trim())
-    setPatSaved(true)
-    setTimeout(() => setPatSaved(false), 2000)
-  }
-
-  const handleExport = async () => {
-    setExporting(true)
-    try {
-      await exportData()
-    } finally {
-      setExporting(false)
-    }
-  }
-
-  const handleSaveRepertoire = async () => {
-    setSavingRepertoire(true)
-    try {
-      await exportAsRepertoire()
-    } finally {
-      setSavingRepertoire(false)
-    }
-  }
-
-  const runImport = async (promise: Promise<ImportResult>) => {
+  // ── Helpers ──────────────────────────────────────────────────────────────
+  const runImport = async (promise: Promise<ImportResult>, key: string) => {
     setStatus('importing')
+    setActiveRestore(key)
     setResult(null)
     setErrorMsg('')
     try {
@@ -72,219 +55,228 @@ export function DataModal({ onClose }: DataModalProps) {
       setStatus('done')
       await hydrateSongs()
       await hydrateSetlists()
-
-      // Push everything to Firestore so cloud matches the imported data
-      const uid = getCurrentUid()
       if (uid) {
-        const [songs, setlists] = await Promise.all([
-          db.songs.toArray(),
-          db.setlists.toArray(),
-        ])
-        for (const song of songs) syncSongUp(uid, song).catch(console.error)
+        const [songs, setlists] = await Promise.all([db.songs.toArray(), db.setlists.toArray()])
+        for (const s  of songs)    syncSongUp(uid, s).catch(console.error)
         for (const sl of setlists) syncSetlistUp(uid, sl).catch(console.error)
-        console.info(`Pushed ${songs.length} songs and ${setlists.length} setlists to Firestore`)
       }
     } catch (err) {
       setErrorMsg(err instanceof Error ? err.message : 'Unknown error')
       setStatus('error')
+    } finally {
+      setActiveRestore(null)
     }
   }
 
-  const handleBundledImport = async () => {
-    setBundleImporting(true)
-    const url = `${import.meta.env.BASE_URL}pino-import.json`
-    await runImport(importFromUrl(url))
-    setBundleImporting(false)
+  const handleExport = async () => {
+    setExporting(true)
+    try { await exportData() } finally { setExporting(false) }
   }
 
-  const handleBackupImport = async (n: 1 | 2) => {
-    const url = `${import.meta.env.BASE_URL}pino-import-backup-${n}.json`
-    await runImport(importFromUrl(url))
+  const handleSaveRepertoire = async () => {
+    setSavingRepertoire(true)
+    try { await exportAsRepertoire() } finally { setSavingRepertoire(false) }
   }
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
-    await runImport(importData(file))
+    await runImport(importData(file), 'file')
     if (fileInputRef.current) fileInputRef.current.value = ''
   }
 
+  const handleSavePat = () => {
+    setGithubPat(patDraft.trim())
+    setPatSaved(true)
+    setTimeout(() => setPatSaved(false), 2000)
+  }
+
+  const isBusy = status === 'importing'
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
-      <div className="w-full max-w-md bg-slate-800 border border-slate-700 rounded-2xl shadow-2xl">
+      <div className="w-full max-w-sm bg-slate-800 border border-slate-700 rounded-2xl shadow-2xl">
 
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-700">
-          <h2 className="text-lg font-semibold text-slate-100">Data Management</h2>
-          <button
-            onClick={onClose}
-            className="p-2 text-slate-400 hover:text-slate-100 hover:bg-slate-700 rounded-lg transition-colors"
-          >
-            <X size={20} />
+          <h2 className="text-base font-semibold text-slate-100">Data &amp; Backup</h2>
+          <button onClick={onClose}
+            className="p-1.5 text-slate-400 hover:text-slate-100 hover:bg-slate-700 rounded-lg transition-colors">
+            <X size={18} />
           </button>
         </div>
 
-        <div className="px-5 py-5 space-y-4">
+        <div className="px-4 py-4 space-y-3">
 
-          {/* Emergency restore — backups only */}
-          <div className="p-4 bg-slate-700/40 border border-slate-700 rounded-xl space-y-2">
-            <h3 className="font-medium text-slate-200">Restore Repertoire</h3>
-            <p className="text-sm text-slate-400">
-              Emergency restore from a previous cloud backup. Use only if something went wrong —
-              the repertoire loads automatically on sign-in when needed.
-            </p>
-            <div className="flex flex-wrap gap-2">
-              <button
-                onClick={handleBundledImport}
-                disabled={status === 'importing' || bundleImporting}
-                className="flex items-center gap-2 px-3 py-2.5 bg-slate-600 hover:bg-slate-500
-                           disabled:opacity-50 text-slate-200 rounded-lg text-sm font-medium transition-colors"
-              >
-                {bundleImporting ? <Loader2 size={15} className="animate-spin" /> : <Music2 size={15} />}
-                {bundleImporting ? 'Loading…' : 'Current'}
-              </button>
-              <button
-                onClick={() => handleBackupImport(1)}
-                disabled={status === 'importing'}
-                title="Load the version before the current one"
-                className="flex items-center gap-2 px-3 py-2.5 bg-slate-600 hover:bg-slate-500
-                           disabled:opacity-50 text-slate-200 rounded-lg text-sm font-medium transition-colors"
-              >
-                Backup 1
-              </button>
-              <button
-                onClick={() => handleBackupImport(2)}
-                disabled={status === 'importing'}
-                title="Load two versions back"
-                className="flex items-center gap-2 px-3 py-2.5 bg-slate-600 hover:bg-slate-500
-                           disabled:opacity-50 text-slate-200 rounded-lg text-sm font-medium transition-colors"
-              >
-                Backup 2
-              </button>
+          {/* Cloud sync status */}
+          <div className="flex items-center gap-2 px-3 py-2 bg-emerald-900/25 border border-emerald-700/40 rounded-xl">
+            {uid
+              ? <CloudCheck size={16} className="text-emerald-400 flex-shrink-0" />
+              : <Cloud      size={16} className="text-slate-500  flex-shrink-0" />}
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-medium text-slate-200">
+                {uid ? 'Cloud sync active' : 'Signed out — local only'}
+              </p>
+              <p className="text-[10px] text-slate-500 leading-tight">
+                {uid
+                  ? 'Every save is pushed to Firestore automatically'
+                  : 'Sign in to enable automatic cloud sync'}
+              </p>
             </div>
           </div>
 
-          {/* Update bundled repertoire */}
-          <div className="p-4 bg-emerald-900/20 border border-emerald-700/40 rounded-xl space-y-2">
-            <h3 className="font-medium text-slate-200">Update Repertoire File</h3>
-            <p className="text-sm text-slate-400">
-              Downloads your current songs as <span className="font-mono text-slate-300">pino-import.json</span>.
-              Save it to <span className="font-mono text-slate-300">public/</span> in your project folder,
-              then ask Claude to push it — so "Load Repertoire" always has your latest songs.
-            </p>
-            <button
-              onClick={handleSaveRepertoire}
-              disabled={savingRepertoire}
-              className="flex items-center gap-2 px-4 py-2.5 bg-emerald-700 hover:bg-emerald-600
-                         disabled:opacity-50 text-white rounded-lg text-sm font-medium transition-colors"
-            >
-              {savingRepertoire ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
-              {savingRepertoire ? 'Preparing…' : 'Save as Repertoire File'}
-            </button>
-          </div>
+          {/* ── Main actions — 2-column grid ── */}
+          <div className="grid grid-cols-2 gap-2">
 
-          {/* Export */}
-          <div className="p-4 bg-slate-700/40 border border-slate-700 rounded-xl space-y-2">
-            <h3 className="font-medium text-slate-200">Export Backup</h3>
-            <p className="text-sm text-slate-400">
-              Download all your songs and setlists as a dated JSON backup file.
-            </p>
+            {/* Backup */}
             <button
               onClick={handleExport}
               disabled={exporting}
-              className="flex items-center gap-2 px-4 py-2.5 bg-slate-600 hover:bg-slate-500
-                         disabled:opacity-50 text-white rounded-lg text-sm font-medium transition-colors"
+              className="flex flex-col items-center gap-2 p-4 bg-slate-700/50 border border-slate-600
+                         hover:bg-slate-700 hover:border-slate-500 disabled:opacity-50
+                         rounded-xl text-sm font-medium text-slate-200 transition-colors"
             >
-              {exporting ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
-              {exporting ? 'Preparing…' : 'Download Backup'}
+              {exporting
+                ? <Loader2 size={22} className="animate-spin text-slate-400" />
+                : <Download size={22} className="text-sky-400" />}
+              <span>{exporting ? 'Preparing…' : 'Download Backup'}</span>
             </button>
-          </div>
 
-          {/* Import from file */}
-          <div className="p-4 bg-slate-700/40 border border-slate-700 rounded-xl space-y-2">
-            <h3 className="font-medium text-slate-200">Import from File</h3>
-            <p className="text-sm text-slate-400">
-              Restore from a previously exported backup JSON file.
-            </p>
+            {/* Restore from file */}
             <button
               onClick={() => fileInputRef.current?.click()}
-              disabled={status === 'importing'}
-              className="flex items-center gap-2 px-4 py-2.5 bg-slate-600 hover:bg-slate-500
-                         disabled:opacity-50 text-white rounded-lg text-sm font-medium transition-colors"
+              disabled={isBusy}
+              className="flex flex-col items-center gap-2 p-4 bg-slate-700/50 border border-slate-600
+                         hover:bg-slate-700 hover:border-slate-500 disabled:opacity-50
+                         rounded-xl text-sm font-medium text-slate-200 transition-colors"
             >
-              {status === 'importing' && !bundleImporting
-                ? <Loader2 size={16} className="animate-spin" />
-                : <Upload size={16} />}
-              {status === 'importing' && !bundleImporting ? 'Importing…' : 'Choose File'}
+              {isBusy && activeRestore === 'file'
+                ? <Loader2 size={22} className="animate-spin text-slate-400" />
+                : <Upload size={22} className="text-violet-400" />}
+              <span>{isBusy && activeRestore === 'file' ? 'Importing…' : 'Restore File'}</span>
             </button>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".json,application/json"
-              onChange={handleFileChange}
-              className="hidden"
-            />
+
+            <input ref={fileInputRef} type="file" accept=".json,application/json"
+              onChange={handleFileChange} className="hidden" />
           </div>
 
-          {/* Result */}
+          {/* ── Emergency cloud restore ── */}
+          <div className="p-3 bg-slate-700/30 border border-slate-700 rounded-xl space-y-2">
+            <div className="flex items-center gap-1.5">
+              <RotateCcw size={13} className="text-amber-400" />
+              <p className="text-xs font-semibold text-slate-300 uppercase tracking-wider">Emergency restore</p>
+            </div>
+            <div className="grid grid-cols-3 gap-1.5">
+              {([
+                { key: 'current',  label: 'Latest',   url: `${import.meta.env.BASE_URL}pino-import.json` },
+                { key: 'backup1',  label: 'Backup 1', url: `${import.meta.env.BASE_URL}pino-import-backup-1.json` },
+                { key: 'backup2',  label: 'Backup 2', url: `${import.meta.env.BASE_URL}pino-import-backup-2.json` },
+              ]).map(({ key, label, url }) => (
+                <button
+                  key={key}
+                  onClick={() => runImport(importFromUrl(url), key)}
+                  disabled={isBusy}
+                  className="py-2 text-xs font-medium text-slate-300 bg-slate-600/60
+                             hover:bg-slate-600 disabled:opacity-50 rounded-lg transition-colors
+                             flex items-center justify-center gap-1"
+                >
+                  {isBusy && activeRestore === key
+                    ? <Loader2 size={12} className="animate-spin" />
+                    : null}
+                  {label}
+                </button>
+              ))}
+            </div>
+            <p className="text-[10px] text-slate-500">
+              Use only if something went wrong. Cloud sync restores automatically on sign-in.
+            </p>
+          </div>
+
+          {/* ── Result feedback ── */}
           {status === 'done' && result && (
-            <div className="flex gap-3 p-4 bg-green-900/30 border border-green-700/50 rounded-xl">
-              <CheckCircle size={20} className="text-green-400 flex-shrink-0 mt-0.5" />
-              <div className="text-sm text-green-200 space-y-1">
-                <p className="font-medium">Import complete!</p>
-                <p>Songs: {result.songsAdded} added, {result.songsUpdated} updated</p>
-                <p>Setlists: {result.setlistsAdded} added, {result.setlistsUpdated} updated</p>
-                {result.errors.length > 0 && (
-                  <p className="text-yellow-400 mt-1">
-                    {result.errors.length} item(s) skipped.
-                  </p>
-                )}
+            <div className="flex gap-2 p-3 bg-emerald-900/30 border border-emerald-700/50 rounded-xl">
+              <CheckCircle size={16} className="text-emerald-400 flex-shrink-0 mt-0.5" />
+              <div className="text-xs text-emerald-200 space-y-0.5">
+                <p className="font-medium">Imported successfully</p>
+                <p>{result.songsAdded} songs added · {result.songsUpdated} updated</p>
+                <p>{result.setlistsAdded} setlists added · {result.setlistsUpdated} updated</p>
               </div>
             </div>
           )}
 
           {status === 'error' && (
-            <div className="flex gap-3 p-4 bg-red-900/30 border border-red-700/50 rounded-xl">
-              <AlertCircle size={20} className="text-red-400 flex-shrink-0 mt-0.5" />
-              <div className="text-sm text-red-200">
+            <div className="flex gap-2 p-3 bg-red-900/30 border border-red-700/50 rounded-xl">
+              <AlertCircle size={16} className="text-red-400 flex-shrink-0 mt-0.5" />
+              <div className="text-xs text-red-200">
                 <p className="font-medium">Import failed</p>
                 <p>{errorMsg}</p>
               </div>
             </div>
           )}
 
-          {/* GitHub sync token */}
-          <div className="p-4 bg-slate-700/40 border border-slate-700 rounded-xl space-y-2">
-            <div className="flex items-center gap-2">
-              <KeyRound size={15} className="text-slate-400" />
-              <h3 className="font-medium text-slate-200">GitHub Sync Token</h3>
-              {githubPat && (
-                <span className="text-xs px-2 py-0.5 bg-green-800/50 text-green-400 rounded-full">Active</span>
-              )}
+          {/* ── Advanced (collapsed) ── */}
+          <button
+            onClick={() => setShowAdvanced((v) => !v)}
+            className="w-full flex items-center justify-between px-3 py-2 text-xs text-slate-500
+                       hover:text-slate-300 transition-colors"
+          >
+            <span>Advanced</span>
+            {showAdvanced ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+          </button>
+
+          {showAdvanced && (
+            <div className="space-y-2.5 pt-1">
+
+              {/* Update repertoire file */}
+              <div className="p-3 bg-slate-700/30 border border-slate-600 rounded-xl space-y-2">
+                <p className="text-xs font-medium text-slate-300">Update Repertoire File</p>
+                <p className="text-[10px] text-slate-500 leading-snug">
+                  Downloads <span className="font-mono text-slate-400">pino-import.json</span> — save it to
+                  <span className="font-mono text-slate-400"> public/</span> and push to keep the bundled restore current.
+                </p>
+                <button
+                  onClick={handleSaveRepertoire}
+                  disabled={savingRepertoire}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-700/60 hover:bg-emerald-700
+                             disabled:opacity-50 text-emerald-200 rounded-lg text-xs font-medium transition-colors"
+                >
+                  {savingRepertoire ? <Loader2 size={13} className="animate-spin" /> : <Save size={13} />}
+                  {savingRepertoire ? 'Preparing…' : 'Save Repertoire File'}
+                </button>
+              </div>
+
+              {/* GitHub PAT */}
+              <div className="p-3 bg-slate-700/30 border border-slate-600 rounded-xl space-y-2">
+                <div className="flex items-center gap-1.5">
+                  <KeyRound size={13} className="text-slate-400" />
+                  <p className="text-xs font-medium text-slate-300">GitHub Sync Token</p>
+                  {githubPat && (
+                    <span className="text-[10px] px-1.5 py-0.5 bg-emerald-800/50 text-emerald-400 rounded-full">Active</span>
+                  )}
+                </div>
+                <div className="flex gap-1.5">
+                  <input
+                    type="password"
+                    value={patDraft}
+                    onChange={(e) => setPatDraft(e.target.value)}
+                    placeholder="github_pat_..."
+                    className="flex-1 bg-slate-800 border border-slate-600 rounded-lg px-2.5 py-1.5
+                               text-slate-100 placeholder-slate-500 text-xs focus:outline-none
+                               focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+                  />
+                  <button
+                    onClick={handleSavePat}
+                    disabled={!patDraft.trim()}
+                    className="px-3 py-1.5 bg-slate-600 hover:bg-slate-500 disabled:opacity-40
+                               text-white rounded-lg text-xs font-medium transition-colors"
+                  >
+                    {patSaved ? '✓' : 'Save'}
+                  </button>
+                </div>
+              </div>
+
             </div>
-            <p className="text-sm text-slate-400">
-              Auto-pushes your repertoire to GitHub after every save so new devices always load the latest version.
-            </p>
-            <div className="flex gap-2">
-              <input
-                type="password"
-                value={patDraft}
-                onChange={(e) => setPatDraft(e.target.value)}
-                placeholder="github_pat_..."
-                className="flex-1 bg-slate-800 border border-slate-600 rounded-lg px-3 py-2
-                           text-slate-100 placeholder-slate-500 text-sm focus:outline-none
-                           focus:ring-2 focus:ring-violet-500 focus:border-transparent"
-              />
-              <button
-                onClick={handleSavePat}
-                disabled={!patDraft.trim()}
-                className="px-3 py-2 bg-slate-600 hover:bg-slate-500 disabled:opacity-40
-                           text-white rounded-lg text-sm font-medium transition-colors"
-              >
-                {patSaved ? '✓ Saved' : 'Save'}
-              </button>
-            </div>
-          </div>
+          )}
 
         </div>
       </div>
