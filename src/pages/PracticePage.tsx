@@ -12,6 +12,7 @@ import { useWakeLock } from '../hooks/useWakeLock'
 import { usePerformanceKeyboard } from '../hooks/useKeyboard'
 import { useSwipe } from '../hooks/useSwipe'
 import { usePracticeTimer } from '../hooks/usePracticeTimer'
+import { LyricsRenderer } from '../components/LyricsRenderer'
 import { PracticeResultBar } from '../components/PracticeResultBar'
 import { MetronomeControl } from '../components/MetronomeControl'
 import type { Song, PracticeEntry } from '../db/db'
@@ -392,7 +393,11 @@ export function PracticePage() {
           className={`whitespace-pre-wrap leading-relaxed text-slate-100 max-w-3xl mx-auto ${fontMode === 'monospace' ? 'font-mono' : ''}`}
           style={{ fontSize: `${fontSize}px` }}
         >
-          {song.lyrics || <span className="text-slate-600 italic">No lyrics.</span>}
+          <LyricsRenderer
+            lyrics={song.lyrics}
+            showChords={true}
+            fallback={<span className="text-slate-600 italic">No lyrics.</span>}
+          />
         </div>
         <div className="h-8" />
       </div>
