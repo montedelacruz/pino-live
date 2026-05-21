@@ -17,8 +17,8 @@ createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ClerkProvider
       publishableKey={CLERK_KEY}
-      signInFallbackRedirectUrl={afterAuthUrl}
-      signUpFallbackRedirectUrl={afterAuthUrl}
+      signInForceRedirectUrl={afterAuthUrl}
+      signUpForceRedirectUrl={afterAuthUrl}
       afterSignOutUrl={afterAuthUrl}
     >
       <App />

@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { HashRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
-import { useUser } from '@clerk/clerk-react'
+import { useUser, useClerk } from '@clerk/clerk-react'
 import { BottomNav } from './components/BottomNav'
 import { SignInScreen } from './components/SignInScreen'
 import { HomePage } from './pages/HomePage'
@@ -35,6 +35,7 @@ function Layout({ children }: { children: React.ReactNode }) {
 
 export default function App() {
   const { user, isLoaded } = useUser()
+  const { loaded: clerkLoaded } = useClerk()
   const hydrateSongs    = useSongStore((s) => s.hydrate)
   const hydrateSetlists = useSetlistStore((s) => s.hydrate)
   const hydratePractice = usePracticeHistoryStore((s) => s.hydrate)
@@ -62,8 +63,8 @@ export default function App() {
     return () => { unsubSongs(); unsubSetlists() }
   }, [user?.id, isLoaded]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Spinner while Clerk checks auth state
-  if (!isLoaded) {
+  // Spinner while Clerk checks auth state or processes an OAuth callback
+  if (!isLoaded || !clerkLoaded) {
     return (
       <div className="fixed inset-0 bg-slate-950 flex items-center justify-center">
         <Loader2 size={32} className="animate-spin text-violet-400" />
@@ -71,7 +72,7 @@ export default function App() {
     )
   }
 
-  // Sign-in wall
+  // Sign-in wall — only shown once Clerk is fully settled
   if (!user) {
     return <SignInScreen />
   }

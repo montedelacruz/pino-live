@@ -17,7 +17,7 @@ export function SignInScreen() {
 
       {/* Clerk sign-in widget */}
       <SignIn
-        routing="hash"
+        routing="virtual"
         appearance={{
           variables: {
             colorPrimary: '#7c3aed',
