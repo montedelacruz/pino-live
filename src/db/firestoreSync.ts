@@ -21,8 +21,17 @@ const songDoc    = (uid: string, id: string) => doc(firestore, 'users', uid, 'so
 const setlistDoc = (uid: string, id: string) => doc(firestore, 'users', uid, 'setlists', id)
 
 // ── write helpers ─────────────────────────────────────────────────────────────
+
+/**
+ * Firestore rejects documents containing `undefined` values.
+ * Strip them via JSON round-trip (JSON.stringify drops undefined fields).
+ */
+function clean<T>(obj: T): T {
+  return JSON.parse(JSON.stringify(obj))
+}
+
 export async function syncSongUp(uid: string, song: Song) {
-  await setDoc(songDoc(uid, song.id), song)
+  await setDoc(songDoc(uid, song.id), clean(song))
 }
 
 export async function deleteSongUp(uid: string, id: string) {
@@ -30,7 +39,7 @@ export async function deleteSongUp(uid: string, id: string) {
 }
 
 export async function syncSetlistUp(uid: string, setlist: Setlist) {
-  await setDoc(setlistDoc(uid, setlist.id), setlist)
+  await setDoc(setlistDoc(uid, setlist.id), clean(setlist))
 }
 
 export async function deleteSetlistUp(uid: string, id: string) {
