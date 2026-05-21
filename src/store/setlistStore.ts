@@ -2,8 +2,14 @@ import { create } from 'zustand'
 import { db, type Setlist, type AutoFilters } from '../db/db'
 import { syncSetlistUp, deleteSetlistUp } from '../db/firestoreSync'
 import { getCurrentUid } from './currentUser'
+import { useSyncErrorStore } from './syncErrorStore'
 import { scheduleGitHubSync } from '../utils/githubSync'
 import { v4 as uuidv4 } from 'uuid'
+
+const onSyncFail = (err: unknown) => {
+  console.error('[cloud sync]', err)
+  useSyncErrorStore.getState().inc()
+}
 
 interface SetlistState {
   setlists: Setlist[]
@@ -43,7 +49,7 @@ export const useSetlistStore = create<SetlistState>((set, get) => ({
     await db.setlists.add(setlist)
     set((s) => ({ setlists: [setlist, ...s.setlists] }))
     const u = uid()
-    if (u) syncSetlistUp(u, setlist).catch(console.error)
+    if (u) syncSetlistUp(u, setlist).catch(onSyncFail)
     scheduleGitHubSync(true)
     return setlist
   },
@@ -57,7 +63,7 @@ export const useSetlistStore = create<SetlistState>((set, get) => ({
     await db.setlists.add(setlist)
     set((s) => ({ setlists: [setlist, ...s.setlists] }))
     const u = uid()
-    if (u) syncSetlistUp(u, setlist).catch(console.error)
+    if (u) syncSetlistUp(u, setlist).catch(onSyncFail)
     scheduleGitHubSync(true)
     return setlist
   },
@@ -72,7 +78,7 @@ export const useSetlistStore = create<SetlistState>((set, get) => ({
     const u = uid()
     if (u) {
       const sl = get().setlists.find((s) => s.id === id)
-      if (sl) syncSetlistUp(u, { ...sl, ...updates }).catch(console.error)
+      if (sl) syncSetlistUp(u, { ...sl, ...updates }).catch(onSyncFail)
     }
     scheduleGitHubSync(false)
   },
@@ -81,7 +87,7 @@ export const useSetlistStore = create<SetlistState>((set, get) => ({
     await db.setlists.delete(id)
     set((s) => ({ setlists: s.setlists.filter((sl) => sl.id !== id) }))
     const u = uid()
-    if (u) deleteSetlistUp(u, id).catch(console.error)
+    if (u) deleteSetlistUp(u, id).catch(onSyncFail)
     scheduleGitHubSync(true)
   },
 
@@ -93,7 +99,7 @@ export const useSetlistStore = create<SetlistState>((set, get) => ({
     await db.setlists.add(copy)
     set((s) => ({ setlists: [copy, ...s.setlists] }))
     const u = uid()
-    if (u) syncSetlistUp(u, copy).catch(console.error)
+    if (u) syncSetlistUp(u, copy).catch(onSyncFail)
     scheduleGitHubSync(true)
     return copy
   },

@@ -2,8 +2,14 @@ import { create } from 'zustand'
 import { db, type Song } from '../db/db'
 import { syncSongUp, deleteSongUp } from '../db/firestoreSync'
 import { getCurrentUid } from './currentUser'
+import { useSyncErrorStore } from './syncErrorStore'
 import { scheduleGitHubSync } from '../utils/githubSync'
 import { v4 as uuidv4 } from 'uuid'
+
+const onSyncFail = (err: unknown) => {
+  console.error('[cloud sync]', err)
+  useSyncErrorStore.getState().inc()
+}
 
 interface SongState {
   songs: Song[]
@@ -44,7 +50,7 @@ export const useSongStore = create<SongState>((set, get) => ({
     await db.songs.add(song)
     set((s) => ({ songs: [song, ...s.songs] }))
     const u = uid()
-    if (u) syncSongUp(u, song).catch(console.error)
+    if (u) syncSongUp(u, song).catch(onSyncFail)
     scheduleGitHubSync(true)   // immediate — triggered by explicit Save button
     return song
   },
@@ -59,7 +65,7 @@ export const useSongStore = create<SongState>((set, get) => ({
     const u = uid()
     if (u) {
       const song = get().songs.find((s) => s.id === id)
-      if (song) syncSongUp(u, { ...song, ...updates }).catch(console.error)
+      if (song) syncSongUp(u, { ...song, ...updates }).catch(onSyncFail)
     }
     scheduleGitHubSync(false)  // debounced 30s — collapses rapid auto-saves
   },
@@ -68,7 +74,7 @@ export const useSongStore = create<SongState>((set, get) => ({
     await db.songs.delete(id)
     set((s) => ({ songs: s.songs.filter((song) => song.id !== id) }))
     const u = uid()
-    if (u) deleteSongUp(u, id).catch(console.error)
+    if (u) deleteSongUp(u, id).catch(onSyncFail)
     scheduleGitHubSync(true)   // immediate — song removed
   },
 
@@ -80,7 +86,7 @@ export const useSongStore = create<SongState>((set, get) => ({
     await db.songs.add(copy)
     set((s) => ({ songs: [copy, ...s.songs] }))
     const u = uid()
-    if (u) syncSongUp(u, copy).catch(console.error)
+    if (u) syncSongUp(u, copy).catch(onSyncFail)
     scheduleGitHubSync(true)
     return copy
   },

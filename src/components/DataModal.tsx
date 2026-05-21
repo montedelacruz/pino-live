@@ -2,11 +2,13 @@ import { useRef, useState } from 'react'
 import {
   X, Download, Upload, CheckCircle, AlertCircle, Loader2,
   Cloud, CloudCheck, RotateCcw, ChevronDown, ChevronUp, KeyRound, Save,
+  RefreshCw,
 } from 'lucide-react'
 import { exportData, exportAsRepertoire, importData, type ImportResult } from '../utils/exportImport'
 import { useSongStore } from '../store/songStore'
 import { useSetlistStore } from '../store/setlistStore'
 import { useSettingsStore } from '../store/settingsStore'
+import { useSyncErrorStore } from '../store/syncErrorStore'
 import { syncSongUp, syncSetlistUp } from '../db/firestoreSync'
 import { getCurrentUid } from '../store/currentUser'
 import { db } from '../db/db'
@@ -27,13 +29,15 @@ async function importFromUrl(url: string): Promise<ImportResult> {
 
 export function DataModal({ onClose }: DataModalProps) {
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const [status,          setStatus]          = useState<Status>('idle')
-  const [result,          setResult]          = useState<ImportResult | null>(null)
-  const [errorMsg,        setErrorMsg]        = useState('')
-  const [exporting,       setExporting]       = useState(false)
-  const [activeRestore,   setActiveRestore]   = useState<string | null>(null)
-  const [showAdvanced,    setShowAdvanced]    = useState(false)
+  const [status,           setStatus]           = useState<Status>('idle')
+  const [result,           setResult]           = useState<ImportResult | null>(null)
+  const [errorMsg,         setErrorMsg]         = useState('')
+  const [exporting,        setExporting]        = useState(false)
+  const [activeRestore,    setActiveRestore]    = useState<string | null>(null)
+  const [showAdvanced,     setShowAdvanced]     = useState(false)
   const [savingRepertoire, setSavingRepertoire] = useState(false)
+  const [forceSyncing,     setForceSyncing]     = useState(false)
+  const [forceSyncResult,  setForceSyncResult]  = useState<string | null>(null)
 
   const { githubPat, setGithubPat } = useSettingsStore()
   const [patDraft, setPatDraft] = useState(githubPat)
@@ -41,6 +45,7 @@ export function DataModal({ onClose }: DataModalProps) {
 
   const hydrateSongs    = useSongStore((s) => s.hydrate)
   const hydrateSetlists = useSetlistStore((s) => s.hydrate)
+  const { pendingCount, reset: resetSyncErrors } = useSyncErrorStore()
   const uid             = getCurrentUid()
 
   // ── Helpers ──────────────────────────────────────────────────────────────
@@ -85,6 +90,28 @@ export function DataModal({ onClose }: DataModalProps) {
     if (fileInputRef.current) fileInputRef.current.value = ''
   }
 
+  const handleForceSync = async () => {
+    if (!uid) return
+    setForceSyncing(true)
+    setForceSyncResult(null)
+    try {
+      const [songs, setlists] = await Promise.all([
+        db.songs.toArray(),
+        db.setlists.toArray(),
+      ])
+      await Promise.all([
+        ...songs.map((s)  => syncSongUp(uid, s)),
+        ...setlists.map((sl) => syncSetlistUp(uid, sl)),
+      ])
+      resetSyncErrors()
+      setForceSyncResult(`✓ Pushed ${songs.length} songs and ${setlists.length} setlists to cloud`)
+    } catch (err) {
+      setForceSyncResult(`✗ ${err instanceof Error ? err.message : 'Sync failed'}`)
+    } finally {
+      setForceSyncing(false)
+    }
+  }
+
   const handleSavePat = () => {
     setGithubPat(patDraft.trim())
     setPatSaved(true)
@@ -108,14 +135,24 @@ export function DataModal({ onClose }: DataModalProps) {
 
         <div className="px-4 py-4 space-y-3">
 
-          {/* Cloud sync status */}
-          <div className="flex items-center gap-2 px-3 py-2 bg-emerald-900/25 border border-emerald-700/40 rounded-xl">
+          {/* Cloud sync status + force sync */}
+          <div className={`flex items-center gap-2 px-3 py-2 rounded-xl border
+                           ${pendingCount > 0
+                             ? 'bg-rose-900/25 border-rose-700/50'
+                             : 'bg-emerald-900/25 border-emerald-700/40'}`}>
             {uid
-              ? <CloudCheck size={16} className="text-emerald-400 flex-shrink-0" />
-              : <Cloud      size={16} className="text-slate-500  flex-shrink-0" />}
+              ? (pendingCount > 0
+                  ? <AlertCircle size={16} className="text-rose-400 flex-shrink-0" />
+                  : <CloudCheck  size={16} className="text-emerald-400 flex-shrink-0" />)
+              : <Cloud size={16} className="text-slate-500 flex-shrink-0" />}
+
             <div className="flex-1 min-w-0">
               <p className="text-xs font-medium text-slate-200">
-                {uid ? 'Cloud sync active' : 'Signed out — local only'}
+                {!uid
+                  ? 'Signed out — local only'
+                  : pendingCount > 0
+                    ? `${pendingCount} save${pendingCount > 1 ? 's' : ''} didn't reach the cloud`
+                    : 'Cloud sync active'}
               </p>
               <p className="text-[10px] text-slate-500 leading-tight">
                 {uid
@@ -123,7 +160,35 @@ export function DataModal({ onClose }: DataModalProps) {
                   : 'Sign in to enable automatic cloud sync'}
               </p>
             </div>
+
+            {uid && (
+              <button
+                onClick={handleForceSync}
+                disabled={forceSyncing}
+                title="Push all local data to cloud now"
+                className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium
+                            transition-colors flex-shrink-0
+                            ${pendingCount > 0
+                              ? 'bg-rose-700/50 hover:bg-rose-600/60 text-rose-200 border border-rose-600/60'
+                              : 'bg-slate-700 hover:bg-slate-600 text-slate-300 border border-slate-600'}`}
+              >
+                {forceSyncing
+                  ? <Loader2 size={12} className="animate-spin" />
+                  : <RefreshCw size={12} />}
+                {forceSyncing ? 'Syncing…' : 'Force sync'}
+              </button>
+            )}
           </div>
+
+          {/* Force sync result */}
+          {forceSyncResult && (
+            <p className={`text-xs px-3 py-2 rounded-lg border
+                           ${forceSyncResult.startsWith('✓')
+                             ? 'text-emerald-300 bg-emerald-900/25 border-emerald-700/40'
+                             : 'text-rose-300 bg-rose-900/25 border-rose-700/40'}`}>
+              {forceSyncResult}
+            </p>
+          )}
 
           {/* ── Main actions — 2-column grid ── */}
           <div className="grid grid-cols-2 gap-2">

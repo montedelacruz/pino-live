@@ -6,6 +6,7 @@ import { SearchBar } from '../components/SearchBar'
 import { SongCard } from '../components/SongCard'
 import { DataModal } from '../components/DataModal'
 import { useSongStore } from '../store/songStore'
+import { useSyncErrorStore } from '../store/syncErrorStore'
 import { usePerformanceKeyboard } from '../hooks/useKeyboard'
 import type { Song } from '../db/db'
 
@@ -50,6 +51,7 @@ function filterSongs(songs: Song[], query: string): Song[] {
 export function LibraryPage() {
   const navigate = useNavigate()
   const { songs, loading } = useSongStore()
+  const { pendingCount }   = useSyncErrorStore()
   const [search, setSearch] = useState('')
   const [sortKey, setSortKey] = useState<SortKey>('updatedAt')
   const [showSort, setShowSort] = useState(false)
@@ -96,10 +98,13 @@ export function LibraryPage() {
           <div className="flex items-center gap-2">
             <button
               onClick={() => setShowDataModal(true)}
-              className="p-2 text-slate-400 hover:text-slate-100 hover:bg-slate-800 rounded-lg transition-colors"
-              title="Import / Export"
+              className="relative p-2 text-slate-400 hover:text-slate-100 hover:bg-slate-800 rounded-lg transition-colors"
+              title={pendingCount > 0 ? `${pendingCount} unsaved to cloud — open to force sync` : 'Data & Backup'}
             >
               <Settings2 size={20} />
+              {pendingCount > 0 && (
+                <span className="absolute top-1 right-1 w-2 h-2 bg-rose-500 rounded-full" />
+              )}
             </button>
             <button
               onClick={() => navigate('/songs/new')}
