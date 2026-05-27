@@ -1,6 +1,7 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { HashRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { useUser, useClerk } from '@clerk/clerk-react'
+import { WifiOff } from 'lucide-react'
 import { BottomNav } from './components/BottomNav'
 import { SignInScreen } from './components/SignInScreen'
 import { HomePage } from './pages/HomePage'
@@ -20,14 +21,34 @@ import { setCurrentUid } from './store/currentUser'
 import { subscribeSongs, subscribeSetlists } from './db/firestoreSync'
 import { Loader2 } from 'lucide-react'
 
+// ── Clerk load timeout (ms) — if Clerk can't initialise in time, go offline ──
+const CLERK_TIMEOUT_MS = 7000
+
 const FULLSCREEN_ROUTES = ['/performance/', '/practice']
 
-function Layout({ children }: { children: React.ReactNode }) {
+function Layout({
+  children,
+  offlineMode,
+}: {
+  children: React.ReactNode
+  offlineMode: boolean
+}) {
   const { pathname } = useLocation()
   const isFullscreen = FULLSCREEN_ROUTES.some((r) => pathname.startsWith(r))
   return (
     <>
-      {children}
+      {/* Offline banner — shown on every page except full-screen views */}
+      {offlineMode && !isFullscreen && (
+        <div className="fixed top-0 left-0 right-0 z-50 flex items-center justify-center gap-2
+                        py-1.5 bg-amber-600/90 backdrop-blur-sm text-white text-xs font-medium">
+          <WifiOff size={13} />
+          Offline — using local data. Sync will resume when connected.
+        </div>
+      )}
+      {/* Push content down when banner is showing */}
+      <div className={offlineMode && !isFullscreen ? 'pt-7' : ''}>
+        {children}
+      </div>
       {!isFullscreen && <BottomNav />}
     </>
   )
@@ -36,35 +57,67 @@ function Layout({ children }: { children: React.ReactNode }) {
 export default function App() {
   const { user, isLoaded } = useUser()
   const { loaded: clerkLoaded } = useClerk()
+
   const hydrateSongs    = useSongStore((s) => s.hydrate)
   const hydrateSetlists = useSetlistStore((s) => s.hydrate)
   const hydratePractice = usePracticeHistoryStore((s) => s.hydrate)
-  const setSongs     = useSongStore((s) => s.setSongs)
-  const setSetlists  = useSetlistStore((s) => s.setSetlists)
+  const setSongs        = useSongStore((s) => s.setSongs)
+  const setSetlists     = useSetlistStore((s) => s.setSetlists)
 
-  // Keep the module-level uid in sync with Clerk so stores can access it
+  // ── Offline / Clerk-timeout detection ──────────────────────────────────────
+  const [isOffline,     setIsOffline]     = useState(!navigator.onLine)
+  const [clerkTimedOut, setClerkTimedOut] = useState(false)
+
+  // Track browser online/offline events
+  useEffect(() => {
+    const onOffline = () => setIsOffline(true)
+    const onOnline  = () => { setIsOffline(false); setClerkTimedOut(false) }
+    window.addEventListener('offline', onOffline)
+    window.addEventListener('online',  onOnline)
+    return () => {
+      window.removeEventListener('offline', onOffline)
+      window.removeEventListener('online',  onOnline)
+    }
+  }, [])
+
+  // If Clerk hasn't finished loading after CLERK_TIMEOUT_MS, stop waiting
+  useEffect(() => {
+    if (isLoaded || clerkTimedOut) return
+    const t = setTimeout(() => setClerkTimedOut(true), CLERK_TIMEOUT_MS)
+    return () => clearTimeout(t)
+  }, [isLoaded, clerkTimedOut])
+
+  // Offline mode = browser says offline OR Clerk gave up loading
+  const offlineMode = isOffline || clerkTimedOut
+
+  // ── Keep module-level uid in sync with Clerk ───────────────────────────────
   useEffect(() => {
     setCurrentUid(user?.id ?? null)
   }, [user?.id])
 
-  // When signed in → subscribe to Firestore live updates
-  // When signed out → fall back to local IndexedDB
+  // ── Data loading — Firestore (online+signed in) or local Dexie ────────────
   useEffect(() => {
-    if (!isLoaded) return
-    if (!user) {
+    // Wait until we know the auth state, OR we've given up waiting (offline)
+    if (!isLoaded && !offlineMode) return
+
+    if (!user || offlineMode) {
+      // Signed out or offline → use local IndexedDB only
       hydrateSongs()
       hydrateSetlists()
       hydratePractice()
       return
     }
-    const unsubSongs = subscribeSongs(user.id, setSongs)
+
+    // Signed in and online → live Firestore subscriptions
+    const unsubSongs    = subscribeSongs(user.id, setSongs)
     const unsubSetlists = subscribeSetlists(user.id, setSetlists)
     hydratePractice()
     return () => { unsubSongs(); unsubSetlists() }
-  }, [user?.id, isLoaded]) // eslint-disable-line react-hooks/exhaustive-deps
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id, isLoaded, offlineMode])
 
-  // Spinner while Clerk checks auth state or processes an OAuth callback
-  if (!isLoaded || !clerkLoaded) {
+  // ── Spinner — only while Clerk is loading AND we're online ────────────────
+  if (!isLoaded && !clerkLoaded && !offlineMode) {
     return (
       <div className="fixed inset-0 bg-slate-950 flex items-center justify-center">
         <Loader2 size={32} className="animate-spin text-violet-400" />
@@ -72,14 +125,15 @@ export default function App() {
     )
   }
 
-  // Sign-in wall — only shown once Clerk is fully settled
-  if (!user) {
+  // ── Sign-in wall — only when online, Clerk settled, and no session ─────────
+  if (!user && !offlineMode) {
     return <SignInScreen />
   }
 
+  // ── App ───────────────────────────────────────────────────────────────────
   return (
     <HashRouter>
-      <Layout>
+      <Layout offlineMode={offlineMode}>
         <Routes>
           <Route path="/"                    element={<HomePage />} />
           <Route path="/library"             element={<LibraryPage />} />
