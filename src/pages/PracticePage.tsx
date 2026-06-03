@@ -17,7 +17,8 @@ import { PracticeResultBar } from '../components/PracticeResultBar'
 import { MetronomeControl } from '../components/MetronomeControl'
 import type { Song, PracticeEntry } from '../db/db'
 
-const SCROLL_STEP       = 120
+const SCROLL_STEP       = 120   // px per keyboard arrow (fine scroll)
+const PEDAL_OVERLAP     = 0.75  // pedal scrolls 75 % of visible height (25 % overlap)
 const JUMP_SIZE         = 10
 const AT_EDGE_THRESHOLD = 20
 
@@ -218,7 +219,11 @@ export function PracticePage() {
     const el = lyricsRef.current
     if (el) {
       const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight <= AT_EDGE_THRESHOLD
-      if (!atBottom) { el.scrollBy({ top: SCROLL_STEP, behavior: 'smooth' }); resetControlsTimer(); return }
+      if (!atBottom) {
+        el.scrollBy({ top: Math.round(el.clientHeight * PEDAL_OVERLAP), behavior: 'smooth' })
+        resetControlsTimer()
+        return
+      }
     }
     goTo(currentIndex + 1)
   }, [currentIndex, goTo, resetControlsTimer])
@@ -226,7 +231,9 @@ export function PracticePage() {
   const handleLeftSingle = useCallback(() => {
     const el = lyricsRef.current
     if (el && el.scrollTop > AT_EDGE_THRESHOLD) {
-      el.scrollBy({ top: -SCROLL_STEP, behavior: 'smooth' }); resetControlsTimer(); return
+      el.scrollBy({ top: -Math.round(el.clientHeight * PEDAL_OVERLAP), behavior: 'smooth' })
+      resetControlsTimer()
+      return
     }
     goTo(currentIndex - 1)
   }, [currentIndex, goTo, resetControlsTimer])
