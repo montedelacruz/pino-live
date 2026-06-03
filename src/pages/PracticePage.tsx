@@ -118,9 +118,25 @@ export function PracticePage() {
   const [showMetronome, setShowMetronome] = useState(false)
   const [results, setResults] = useState<Record<string, PracticeEntry['result']>>({})
   const [sessionDone, setSessionDone] = useState(false)
+  const [atBottom, setAtBottom] = useState(false)
+  const [atTop,    setAtTop]    = useState(true)
 
   const lyricsRef     = useRef<HTMLDivElement>(null)
   const controlsTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Track scroll edges so Prev/Next highlight when the next pedal press will change song
+  const updateEdgeState = useCallback(() => {
+    const el = lyricsRef.current
+    if (!el) return
+    setAtTop(el.scrollTop <= AT_EDGE_THRESHOLD)
+    setAtBottom(el.scrollHeight - el.scrollTop - el.clientHeight <= AT_EDGE_THRESHOLD)
+  }, [])
+
+  // Re-evaluate whenever the song changes (scroll resets to top)
+  useEffect(() => {
+    const t = setTimeout(updateEdgeState, 50)
+    return () => clearTimeout(t)
+  }, [currentIndex, updateEdgeState])
 
   useWakeLock(true)
 
@@ -371,6 +387,7 @@ export function PracticePage() {
       {/* ── Lyrics ── */}
       <div
         ref={lyricsRef}
+        onScroll={updateEdgeState}
         className="flex-1 overflow-y-auto px-6 pb-4"
         style={{
           paddingTop: showMetronome ? '108px' : '68px',
@@ -426,16 +443,22 @@ export function PracticePage() {
         <button
           onClick={() => { cancelCountdown(); goTo(currentIndex - 1) }}
           disabled={currentIndex === 0}
-          className="flex items-center gap-1 px-3 py-2 rounded-xl bg-slate-800/80
-                     text-slate-300 hover:text-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors text-sm">
+          className={`flex items-center gap-1 px-3 py-2 rounded-xl transition-colors text-sm
+                      disabled:opacity-30 disabled:cursor-not-allowed
+                      ${atTop && currentIndex > 0
+                        ? 'bg-yellow-400/20 text-yellow-300 border border-yellow-400/50'
+                        : 'bg-slate-800/80 text-slate-300 hover:text-slate-100'}`}>
           <ChevronLeft size={18} />
           Prev
         </button>
         <button
           onClick={() => { cancelCountdown(); goTo(currentIndex + 1) }}
           disabled={currentIndex === songs.length - 1}
-          className="flex items-center gap-1 px-3 py-2 rounded-xl bg-slate-800/80
-                     text-slate-300 hover:text-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors text-sm">
+          className={`flex items-center gap-1 px-3 py-2 rounded-xl transition-colors text-sm
+                      disabled:opacity-30 disabled:cursor-not-allowed
+                      ${atBottom && currentIndex < songs.length - 1
+                        ? 'bg-yellow-400/20 text-yellow-300 border border-yellow-400/50'
+                        : 'bg-slate-800/80 text-slate-300 hover:text-slate-100'}`}>
           Next
           <ChevronRight size={18} />
         </button>
